@@ -1,0 +1,45 @@
+{
+  "name": "sql-puzzle",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aidiiin/sql-puzzle.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Aidiiin/sql-puzzle/issues"
+  },
+  "homepage": "https://github.com/Aidiiin/sql-puzzle#readme",
+  "devDependencies": {
+    "@tsconfig/node12": "^1.0.11",
+    "@types/jest": "^29.4.0",
+    "@types/lodash": "^4.14.191",
+    "@typescript-eslint/eslint-plugin": "^5.52.0",
+    "@typescript-eslint/parser": "^5.52.0",
+    "eslint": "^8.34.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-config-standard-with-typescript": "^34.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.6.1",
+    "eslint-plugin-promise": "^6.1.1",
+    "jest": "^29.4.3",
+    "prettier": "2.8.4",
+    "sqlite3": "^5.1.4",
+    "ts-jest": "^29.0.5",
+    "typescript": "^4.9.5"
+  },
+  "peerDependencies": {
+    "sequelize": ">= 5.0.0 < 7.0.0"
+  },
+  "dependencies": {
+    "fp-ts": "^2.13.1",
+    "lodash": "^4.17.21"
+  }
+}

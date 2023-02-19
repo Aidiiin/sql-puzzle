@@ -1,0 +1,25 @@
+{
+  "quoteProps": "as-needed",
+  "bracketSpacing": false,
+  "bracketSameLine": true,
+  "endOfLine": "lf",
+  "arrowParens": "always",
+  "spaceBeforeFunctionParen": false,
+  "embeddedLanguageFormatting": "off",
+  "singleAttributePerLine": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "useTabs": false,
+  "printWidth": 120,
+  "tabWidth": 2,
+  "overrides": [
+    {
+      "files": "*.yaml",
+      "options": {
+        "tadWidth": 2,
+        "printWidth": 40,
+        "singleQuote": true
+      }
+    }
+  ]
+}
