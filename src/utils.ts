@@ -14,8 +14,11 @@ export function getValueFromArgs<T, M extends Model>(
 
   return function _getValueFromArgs(ctx?: Context): T {
     // TODO improve typing
-
-    return filteredArgs[0](ctx) as T;
+    if (typeof filteredArgs[0] === 'function') {
+      return filteredArgs[0](ctx) as T;
+    } else {
+      return null as T;
+    }
   };
 }
 
@@ -30,17 +33,21 @@ export function populateQueryOptions<TAttributes, M extends Model>(
     }
     const values: Array<FindAllArgReturn<M>> = args.map((arg: FindAllArg<M>) => {
       if (typeof arg === 'function') {
+        // console.log('asdasdasd',arg.name, arg(ctx))
         return arg(ctx);
       } else {
         return arg;
       }
     });
+    // console.log('XXXX', JSON.stringify(values, null, 2))
     const result: FindOptions = values.reduce((acc: object, val: FindAllArgReturn<M>) => {
       if (typeof val === 'object' && val !== null) {
+        console.log('val', val);
         return lodash.merge(acc, val);
       }
       return acc;
     }, {});
+    console.log({result});
     return result;
   };
 }
