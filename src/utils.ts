@@ -33,21 +33,21 @@ export function populateQueryOptions<TAttributes, M extends Model>(
     }
     const values: Array<FindAllArgReturn<M>> = args.map((arg: FindAllArg<M>) => {
       if (typeof arg === 'function') {
-        // console.log('asdasdasd',arg.name, arg(ctx))
         return arg(ctx);
       } else {
         return arg;
       }
     });
-    // console.log('XXXX', JSON.stringify(values, null, 2))
     const result: FindOptions = values.reduce((acc: object, val: FindAllArgReturn<M>) => {
       if (typeof val === 'object' && val !== null) {
-        console.log('val', val);
-        return lodash.merge(acc, val);
+        return merge(acc, val);
       }
       return acc;
     }, {});
-    console.log({result});
     return result;
   };
+}
+
+function merge(acc: object, obj: object): object {
+  return {...acc, ...obj};
 }

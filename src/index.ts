@@ -80,10 +80,10 @@ void (async () => {
 
   // console.log('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXXXX',{id: {[Op.eq]: 2}});
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  const w:WhereAttributeHash<User> = {id: {[Op.eq]: 1}} as WhereAttributeHash<User>;
+  const w = {id: {[Op.between]: [3, 5]}}  as WhereAttributeHash;
   console.log('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXXXX',w);
   //    ^? 
-  const ress = await User.findAll({where: w, raw: true});
+  const ress = await User.findAll<User>({where: w, raw: true});
   console.log(ress);
 })().then(() => {
   console.log('DONE');
