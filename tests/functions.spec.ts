@@ -56,6 +56,8 @@ import {
   and,
   or,
   not,
+  asc,
+  desc
 } from '../src/functions';
 /* eslint-enable */
 
@@ -602,6 +604,63 @@ describe('testing findAll', () => {
       )(ctx),
     ).toEqual(
       right([
+        {
+          id: 2,
+        },
+        {
+          id: 3,
+        },
+      ]),
+    );
+  });
+
+  
+  test('should return the row where flas is true and (id equal 3 or name = janedoe2) order by id desc', async () => {
+    expect(
+      await findAll<User>(
+        ...args,
+        select('id'),
+        where(
+          and(
+            not('flag', () => true),
+            or(
+              isIn('id', () => [3, 4]),
+              eq('name', 'janedoe2'),
+            ),
+          ),
+        ),
+        limit(3),
+        desc('id'),
+        logging(true)
+      )(ctx),
+    ).toEqual(
+      right([
+        {
+          id: 4,
+        },
+        {
+          id: 3,
+        },
+        {
+          id: 2,
+        },
+      ]),
+    );
+  });
+
+  test('should return the firs three rows asc by id', async () => {
+    expect(
+      await findAll<User>(
+        ...args,
+        select('id'),
+        limit(3),
+        asc('id')
+      )(ctx),
+    ).toEqual(
+      right([
+        {
+          id: 1,
+        },
         {
           id: 2,
         },

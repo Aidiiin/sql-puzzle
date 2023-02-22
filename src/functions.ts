@@ -628,38 +628,39 @@ export function or<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Context
  * --------------------------------------------------**/
 
 export type OrderArg = OrderItem | ((ctx?: Context) => OrderItem);
+export interface OrderReturn {order: Order[]}
 
-export function order(...args: OrderArg[]): (ctx?: Context) => Order {
-  return function _order(ctx): Order {
+export function order(...args: OrderArg[]): (ctx?: Context) => OrderReturn {
+  return function _order(ctx): OrderReturn {
     const values: Order = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
         const temp = arg(ctx);
         if (temp !== undefined) {
-          values.push();
+          values.push(temp);
         }
       } else {
         values.push(arg);
       }
     }
-    return values;
+    return {order: [values]};
   };
 }
 
-export const desc: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) => order(...args, 'DESC');
+export const desc: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) => order(...args, 'DESC');
 
-export const descNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) =>
+export const descNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'DESC nulls first');
 
-export const descNullsLast: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) =>
+export const descNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'DESC nulls last');
 
-export const asc: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) => order(...args, 'ASC');
+export const asc: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) => order(...args, 'ASC');
 
-export const ascNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) =>
+export const ascNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'ASC nulls first');
 
-export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => Order = (...args) =>
+export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'ASC nulls last');
 
 /** joins
@@ -725,12 +726,13 @@ export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => Order = (
 /** Query methods
  * --------------------------------------------------**/
 
-type Select = (ctx?: Context) => SelectAttributes;
-type From<M extends Model> = (ctx?: Context) => ModelStatic<M>;
-type Option<M extends Model> = (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
-type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
+export type Select = (ctx?: Context) => SelectAttributes;
+export type From<M extends Model> = (ctx?: Context) => ModelStatic<M>;
+export type Option<M extends Model> = (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
+export type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
+export type FindArgOrder = (ctx?: Context) => OrderReturn;
 
-export type FindAllArg<M extends Model> = Select | From<M> | Option<M> | Where<M>;
+export type FindAllArg<M extends Model> = Select | From<M> | Option<M> | Where<M> | FindArgOrder;
 export type FindAllArgReturn<M extends Model> = ReturnType<FindAllArg<M>>;
 
 export function findAll<M extends Model>(
