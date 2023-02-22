@@ -1,5 +1,5 @@
 # sql-puzzle (WIP)
-sql-puzzle is a composable and functional query builder for Sequilize.
+sql-puzzle is a composable and functional query builder for Sequelize.
 
 ## Examples
 ```js
