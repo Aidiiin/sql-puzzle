@@ -61,7 +61,7 @@ import {
 } from '../src/functions';
 /* eslint-enable */
 
-const db: Sequelize = new Sequelize('sqlite::memory:', {logging: false});
+const db: Sequelize = new Sequelize('sqlite::memory:', { logging: false });
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: number;
@@ -614,7 +614,6 @@ describe('testing findAll', () => {
     );
   });
 
-  
   test('should return the row where flas is true and (id equal 3 or name = janedoe2) order by id desc', async () => {
     expect(
       await findAll<User>(
@@ -631,7 +630,7 @@ describe('testing findAll', () => {
         ),
         limit(3),
         desc('id'),
-        logging(true)
+        logging(true),
       )(ctx),
     ).toEqual(
       right([
@@ -654,7 +653,7 @@ describe('testing findAll', () => {
         ...args,
         select('id'),
         limit(3),
-        asc('id')
+        asc('id'),
       )(ctx),
     ).toEqual(
       right([

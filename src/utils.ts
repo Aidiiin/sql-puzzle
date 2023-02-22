@@ -1,7 +1,9 @@
+/* eslint-disable */
 import {Either, left, right, tryCatch} from 'fp-ts/lib/Either';
 import type {FindOptions, Transactionable, Attributes, Model, LOCK} from 'sequelize';
 import lodash from 'lodash';
 import {type Context, type FindAllArg, type FindAllArgReturn} from './functions';
+/* eslint-enable */
 
 export function getValueFromArgs<T, M extends Model>(
   funcName: string,
