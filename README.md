@@ -2,7 +2,7 @@
 sql-puzzle is a composable and functional query builder for Sequelize.
 
 ## Examples
-```js
+```typescript
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     declare id: number;
