@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {right} from 'fp-ts/lib/Either';
 import {
   type InferAttributes,
@@ -25,17 +26,38 @@ import {
   limit,
   offset,
   where,
-  eq,
   isNull,
   isFalse,
   isTrue,
+  eq,
   lt,
   lte,
   gt,
   gte,
   ne,
   between,
+  notBetween,
+  isIn,
+  notIn,
+  like,
+  notLike,
+  iLike,
+  notILike,
+  startsWith,
+  endsWith,
+  substring,
+  regexp,
+  notRegexp,
+  iRegexp,
+  notIRegexp,
+  overlap,
+  contains,
+  contained,
+  and,
+  or,
+  not,
 } from '../src/functions';
+/* eslint-enable */
 
 const db: Sequelize = new Sequelize('sqlite::memory:', {logging: false});
 
@@ -114,7 +136,7 @@ User.init(
       allowNull: true,
     },
     flag: {
-      type: new DataTypes.BOOLEAN,
+      type: new DataTypes.BOOLEAN(),
       allowNull: true,
     },
     // createdAt: DataTypes.DATE,
@@ -135,7 +157,6 @@ describe('testing findAll', () => {
     try {
       await db.sync();
       await User.bulkCreate(records);
-
     } catch (e) {
       console.log(e);
     }
@@ -146,7 +167,9 @@ describe('testing findAll', () => {
   });
 
   test('should return all of the created records', async () => {
-    expect(await findAll<User>(from(User), raw(true), select('email', 'id', 'name'))(ctx)).toEqual(right(recordsWithoutDate));
+    expect(await findAll<User>(from(User), raw(true), select('email', 'id', 'name'))(ctx)).toEqual(
+      right(recordsWithoutDate),
+    );
   });
 
   test('should return only selected columns', async () => {
@@ -305,16 +328,6 @@ describe('testing findAll', () => {
     );
   });
 
-  test('should return the row with id = 2', async () => {
-    expect(await findAll<User>(...args, select('id'), where(eq('id', 2)), limit(1))(ctx)).toEqual(
-      right([
-        {
-          id: 2,
-        },
-      ]),
-    );
-  });
-
   test('should return the row where flag is true', async () => {
     expect(await findAll<User>(...args, select('id'), where(isTrue('flag')), limit(1))(ctx)).toEqual(
       right([
@@ -340,6 +353,16 @@ describe('testing findAll', () => {
       right([
         {
           id: 5,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row with id = 2', async () => {
+    expect(await findAll<User>(...args, select('id'), where(eq('id', 2)), limit(1))(ctx)).toEqual(
+      right([
+        {
+          id: 2,
         },
       ]),
     );
@@ -383,7 +406,7 @@ describe('testing findAll', () => {
       right([
         {
           id: 5,
-        }
+        },
       ]),
     );
   });
@@ -393,7 +416,7 @@ describe('testing findAll', () => {
       right([
         {
           id: 2,
-        }
+        },
       ]),
     );
   });
@@ -403,19 +426,189 @@ describe('testing findAll', () => {
       right([
         {
           id: 3,
-        }
+        },
       ]),
     );
   });
 
   test('should return the row where id betwee 3 and 5', async () => {
-    expect(await findAll<User>(...args, select('id'), where(between('id', [3, 5])), limit(1))(ctx)).toEqual(
+    expect(await findAll<User>(...args, select('id'), where(between('id', [3, 5])), limit(2))(ctx)).toEqual(
       right([
         {
+          id: 3,
+        },
+        {
           id: 4,
-        }
+        },
       ]),
     );
   });
 
+  test('should return the row where id not betwee 2 and 100', async () => {
+    expect(await findAll<User>(...args, select('id'), where(notBetween('id', [2, 100])), limit(2))(ctx)).toEqual(
+      right([
+        {
+          id: 1,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row where id in [2, 3]', async () => {
+    expect(await findAll<User>(...args, select('id'), where(isIn('id', [2, 3])), limit(2))(ctx)).toEqual(
+      right([
+        {
+          id: 2,
+        },
+        {
+          id: 3,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row where id not in [1,3]', async () => {
+    expect(await findAll<User>(...args, select('id'), where(notIn('id', [1, 3])), limit(1))(ctx)).toEqual(
+      right([
+        {
+          id: 2,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row where name is like janedoe5', async () => {
+    expect(await findAll<User>(...args, select('id'), where(like('name', 'janedoe5')), limit(1))(ctx)).toEqual(
+      right([
+        {
+          id: 5,
+        },
+      ]),
+    );
+  });
+
+  // test('should return the row where name is ilike janedoe5', async () => {
+  //   expect(await findAll<User>(...args, select('id'), where(iLike('name', 'JAnedoe5')), limit(1))(ctx)).toEqual(
+  //     right([
+  //       {
+  //         id: 5,
+  //       }
+  //     ]),
+  //   );
+  // });
+
+  test('should return the row where name is notlike janedoe5', async () => {
+    expect(await findAll<User>(...args, select('id'), where(notLike('name', 'janedoe5')), limit(1))(ctx)).toEqual(
+      right([
+        {
+          id: 1,
+        },
+      ]),
+    );
+  });
+
+  // test('should return the row where name is notILike janedoe5', async () => {
+  //   expect(await findAll<User>(...args, select('id'), where(notILike('name', 'Janedoe5')), limit(1))(ctx)).toEqual(
+  //     right([
+  //       {
+  //         id: 1,
+  //       }
+  //     ]),
+  //   );
+  // });
+
+  // startsWith,
+  // endsWith,
+  // substring,
+  // regexp,
+  // notRegexp,
+  // iRegexp,
+  // notIRegexp,
+  // overlap,
+  // contains,
+  // contained,
+
+  test('should return the row where id equal 3 and name = janedoe3', async () => {
+    expect(
+      await findAll<User>(...args, select('id'), where(and(eq('id', 3), eq('name', 'janedoe3'))), limit(1))(ctx),
+    ).toEqual(
+      right([
+        {
+          id: 3,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row where id equal 3 or name = janedoe2', async () => {
+    expect(
+      await findAll<User>(
+        ...args,
+        select('id'),
+        where(
+          or(
+            eq('id', () => 3),
+            eq('name', 'janedoe2'),
+          ),
+        ),
+        limit(2),
+      )(ctx),
+    ).toEqual(
+      right([
+        {
+          id: 2,
+        },
+        {
+          id: 3,
+        },
+      ]),
+    );
+  });
+
+  test('should return the row where flas is true and (id equal 3 or name = janedoe2)', async () => {
+    expect(
+      await findAll<User>(
+        ...args,
+        select('id'),
+        where(
+          and(
+            isTrue('flag'),
+            or(
+              eq('id', () => 3),
+              eq('name', 'janedoe2'),
+            ),
+          ),
+        ),
+        limit(2),
+      )(ctx),
+    ).toEqual(right([]));
+  });
+
+  test('should return the row where flas is true and (id equal 3 or name = janedoe2)', async () => {
+    expect(
+      await findAll<User>(
+        ...args,
+        select('id'),
+        where(
+          and(
+            not('flag', () => true),
+            or(
+              eq('id', () => 3),
+              eq('name', 'janedoe2'),
+            ),
+          ),
+        ),
+        limit(2),
+      )(ctx),
+    ).toEqual(
+      right([
+        {
+          id: 2,
+        },
+        {
+          id: 3,
+        },
+      ]),
+    );
+  });
 });

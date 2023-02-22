@@ -19,11 +19,10 @@ import {
   WhereGeometryOptions,
   InferAttributes,
   InferCreationAttributes,
-
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
 import {getValueFromArgs, populateQueryOptions} from './utils';
-import {Col, Fn, Json, Literal, Primitive,  Where as WhereSq} from 'sequelize/types/utils';
+import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 
 // export type Value = string | number | boolean | object;
@@ -277,7 +276,7 @@ export function where<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Cont
 //   | Fn
 //   | WhereGeometryOptions;
 
-type AllowArray<T> = T | T[];
+// type AllowArray<T> = T | T[];
 // type AllowNotOrAndWithImplicitAndArrayRecursive<T> = AllowArray<
 //   // this is the equivalent of Op.and
 //   | T
@@ -287,241 +286,315 @@ type AllowArray<T> = T | T[];
 // >;
 // export type WhereReturnValue<TAttributes = any> = AllowNotOrAndWithImplicitAndArrayRecursive<WhereAttributeHash<TAttributes>>
 
-type AllowNotOrAndRecursive<T> =
-  | T
-  | { [Op.or]: AllowArray<AllowNotOrAndRecursive<T>> }
-  | { [Op.and]: AllowArray<AllowNotOrAndRecursive<T>> }
-  | { [Op.not]: AllowNotOrAndRecursive<T> };
+// type AllowNotOrAndRecursive<T> =
+//   | T
+//   | { [Op.or]: AllowArray<AllowNotOrAndRecursive<T>> }
+//   | { [Op.and]: AllowArray<AllowNotOrAndRecursive<T>> }
+//   | { [Op.not]: AllowNotOrAndRecursive<T> };
 
 export type WhereOp = keyof WhereOperators;
-export type WhereCol<M extends Model> = keyof Attributes<M>;
-export type WhereValArg<AttributeType> = | AllowNotOrAndRecursive<
-| AttributeType extends any[]
-  ? WhereOperators<AttributeType>[typeof Op.eq] | WhereOperators<AttributeType>
-  : (
-    | WhereOperators<AttributeType>[typeof Op.in]
-    | WhereOperators<AttributeType>[typeof Op.eq]
-    | WhereOperators<AttributeType>
-  )
->
+export type WhereCol<M extends Model> = keyof WhereAttributeHash<Attributes<M>>;
+
+// same as op.ne and Op.not
+export type WhereValArgEq<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.eq]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.eq]);
+// same as Op.gt, Op.lt, and Op.lte
+export type WhereValArgGte<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.gte]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.gte]);
+export type WhereValArgIs<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.is]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.is]);
+// same as Op.notBetween
+export type WhereValArgBetween<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.between]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.between]);
+// same as Op.notIn
+export type WhereValArgIn<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.in]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.in]);
+// same as Op.notLike, Op.ilike, and Op.notIlike
+export type WhereValArgLike<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.like]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.like]);
+export type WhereValArgOverlap<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.overlap]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.overlap]);
+export type WhereValArgContains<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.contains]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.contains]);
+export type WhereValArgContained<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.contained]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.contained]);
+// same as Op.endsWith and Op.substring
+export type WhereValArgStartsWith<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.startsWith]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.startsWith]);
+// same as Op.notRegexp and Op.notIRegexp
+export type WhereValArgRegexp<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.regexp]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.regexp]);
+// same as Op.strictRight, Op.noExtendLeft, Op.noExtendRight, and Op.adjacent
+export type WhereValArgStrictLeft<AttributeType> =
+  | WhereOperators<AttributeType>[typeof Op.strictLeft]
+  | ((ctx?: Context) => WhereOperators<AttributeType>[typeof Op.strictLeft]);
+
+export type WhereValArg<AttrType> = WhereValArgEq<AttrType>
+  | WhereValArgGte<AttrType>
+  | WhereValArgIs<AttrType>
+  | WhereValArgBetween<AttrType>
+  | WhereValArgIn<AttrType>
+  | WhereValArgLike<AttrType>
+  | WhereValArgOverlap<AttrType>
+  | WhereValArgContains<AttrType>
+  | WhereValArgContained<AttrType>
+  | WhereValArgStartsWith<AttrType>
+  | WhereValArgRegexp<AttrType>
+  | WhereValArgStrictLeft<AttrType>;
+
+// WhereOperators<AttributeType>
+// | AllowNotOrAndRecursive<
+// | AttributeType extends any[]
+//   ? WhereOperators<AttributeType>[typeof Op.eq] | WhereOperators<AttributeType>
+//   : (
+//     | WhereOperators<AttributeType>[typeof Op.in]
+//     | WhereOperators<AttributeType>[typeof Op.eq]
+//     | WhereOperators<AttributeType>
+//   )
+// >
 // TODO: this needs a simplified version just for JSON columns
-| WhereAttributeHash<any>
+// | WhereAttributeHash<any>
 
 // WhereAttributeHashValue<T>
 // | ((ctx?: Context) => WhereAttributeHashValue<T>)
+// class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
+//   declare id: number;
+//   declare name: string;
+//   declare email: string;
+// }
 
-export function condition<M extends Model, T extends keyof Attributes<M>>(
+// export const name: WhereCol<User> = '$email$';
+
+export function condition<M extends Model, AttrType = any>(
   op: WhereOp,
-  col: T,
-): (val: WhereValArg<T>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
-  return function(val: WhereValArg<Attributes<M>[typeof col]>): (ctx?: Context) => WhereAttributeHash<Attributes<M>>{
-    return function _condition(ctx?: Context) {
-      if (typeof val === 'function') {
-        const res: WhereAttributeHash<Attributes<M>> = {[col]: {[op]: val(ctx)}};
-        return res;
-      } else {
-        const res: WhereAttributeHash<Attributes<M>> = {[col]: {[op]: val}};
-        return res;
-      }
-    };
-  }
+  col: WhereCol<M>,
+  val: WhereValArg<AttrType>,
+): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+  return function _condition(ctx?: Context): WhereAttributeHash<Attributes<M>> {
+      if (typeof val === 'function' && val instanceof Function) {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[op]: val(ctx)}};
+    } else {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[op]: val}};
+    }
+  };
 }
 
-// export function condition<M extends Model, T extends keyof Attributes<M>>(
-//   op: WhereOp,
-//   col: T,
-//   val: WhereValArg<T>,
-// ): (ctx?: Context) => WhereAttributeHash<M> {
-//   return function _condition(ctx?: Context) {
+// export function is<M extends Model, AttributeType = any>(
+//   col: WhereCol<M>,
+//   val: WhereValArgIs<AttributeType>,
+// ): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+//   return function _is(ctx?: Context): WhereAttributeHash<Attributes<M>> {
 //     if (typeof val === 'function') {
-//       return {[col]: {[op]: val(ctx)}};
+//       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+//       return <WhereAttributeHash<Attributes<M>>>{[col]: val(ctx)};
 //     } else {
-//       return {[col]: {[op]: val}};
+//       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+//       return <WhereAttributeHash<Attributes<M>>>{[col]: val};
 //     }
 //   };
 // }
 
-// function is<M extends Model>(col: WhereCol<M>, val: WhereValArg<M>): (ctx?: Context) => WhereValue<M> {
-//   return function _is(ctx?: Context) {
-//     if (typeof val === 'function') {
-//       return {[col]: val(ctx)};
-//     } else {
-//       return {[col]: val};
-//     }
-//   };
-// }
+export const isTrue: <M extends Model>(col: WhereCol<M>) => <M extends Model>(ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+) => condition(Op.is, col, true);
 
-// export const isTrue: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereValue<M> = (col) =>
-//   is(col, true);
+export const isFalse: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col) =>
+condition(Op.is, col, false);
 
-// export const isFalse: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereValue<M> = (col) =>
-//   is(col, false);
+export const isNull: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col) =>
+condition(Op.is, col, null);
 
-// export const isNull: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereValue<M> = (col) =>
-//   is(col, null);
+export const gt: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgGte<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.gt, col, val);
 
-// export const gt: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.gt, col, val);
+export const gte: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgGte<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.gte, col, val);
 
-// export const gte: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.gte, col, val);
+export const lt: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgGte<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.lt, col, val);
 
-// export const lt: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.lt, col, val);
+export const lte: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgGte<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.lte, col, val);
 
-// export const lte: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.lte, col, val);
+export const ne: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgEq<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.ne, col, val);
 
-// export const ne: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.ne, col, val);
+export const eq: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgEq<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.eq, col, val);
 
-// export const eq: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.eq, col, val);
+export const not: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArg<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.not, col, val);
 
-// export const not: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.not, col, val);
+export const notTrue: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgIs<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => not(col, true);
 
-// export const notTrue: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => not(col, true);
+export const notNull: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgIs<AttrType>)=> (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => not(col, null);
 
-// export const notNull: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => not(col, null);
+export const between: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgBetween<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.between, col, val);
 
-// export const between: <M extends Model>(col: WhereCol<M>, val: [number, number]) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.between, col, val);
+export const notBetween: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgBetween<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notBetween, col, val);
 
-// export const notBetween: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.notBetween, col, val);
+export const isIn: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgIn<AttrType>) => (ctx?: Context) => WhereAttributeHash = (
+  col,
+  val,
+) => condition(Op.in, col, val);
 
-// export const isIn: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.in, col, val);
+export const notIn: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgIn<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.notIn, col, val);
 
-// export const notIn: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.notIn, col, val);
+export const like: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgLike<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.like, col, val);
 
-// export const like: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.like, col, val);
+export const notLike: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgLike<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.notLike, col, val);
 
-// export const notLike: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.notLike, col, val);
+export const iLike: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgLike<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.iLike, col, val);
 
-// export const iLike: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.iLike, col, val);
+export const notILike: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgLike<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.notILike, col, val);
 
-// export const notILike: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.notILike, col, val);
+export const startsWith: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStartsWith<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.startsWith, col, val);
 
-// export const startsWith: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.startsWith, col, val);
+export const endsWith: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgStartsWith<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.endsWith, col, val);
 
-// export const endsWith: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.endsWith, col, val);
+export const substring: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStartsWith<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.substring, col, val);
 
-// export const substring: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.substring, col, val);
+export const regexp: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgRegexp<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.regexp, col, val);
 
-// export const regexp: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.regexp, col, val);
+export const notRegexp: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgRegexp<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notRegexp, col, val);
 
-// export const notRegexp: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.notRegexp, col, val);
+export const iRegexp: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgRegexp<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.iRegexp, col, val);
 
-// export const iRegexp: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.iRegexp, col, val);
+export const notIRegexp: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgRegexp<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.notIRegexp, col, val);
 
-// export const notIRegexp: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.notIRegexp, col, val);
+export const overlap: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgOverlap<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.overlap, col, val);
 
-// export const overlap: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.overlap, col, val);
 
-// export const contains: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
+export function contains<M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgContains<AttrType>,
+): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+  return function _contains(ctx?: Context): WhereAttributeHash<Attributes<M>> {
+      if (typeof val === 'function' && val instanceof Function) {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[Op.contains]: val(ctx)}};
+    } else {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[Op.contains]: val}};
+    }
+  };
+}
+
+// export const contains: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgContains<AttrType>) => (ctx?: Context) => WhereAttributeHash = (
 //   col,
 //   val,
 // ) => condition(Op.contains, col, val);
 
-// export const contained: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.contained, col, val);
+export const contained: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgContained<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.contained, col, val);
 
-// export const adjacent: <M extends Model>(col: WhereCol<M>, val: WhereValue) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.adjacent, col, val);
+export const adjacent: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgStrictLeft<AttrType>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+  col,
+  val,
+) => condition(Op.adjacent, col, val);
 
-// export const strictLeft: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.strictLeft, col, val);
+export const strictLeft: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStrictLeft<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.strictLeft, col, val);
 
-// export const strictRight: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.strictRight, col, val);
+export const strictRight: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStrictLeft<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.strictRight, col, val);
 
-// export const noExtendRight: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.noExtendRight, col, val);
+export const noExtendRight: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStrictLeft<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.noExtendRight, col, val);
 
-// export const noExtendLeft: <M extends Model>(
-//   col: WhereCol<M>,
-//   val: WhereValue,
-// ) => (ctx?: Context) => WhereAttributeHash = (col, val) => condition(Op.noExtendLeft, col, val);
+export const noExtendLeft: <M extends Model, AttrType = any>(
+  col: WhereCol<M>,
+  val: WhereValArgStrictLeft<AttrType>,
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.noExtendLeft, col, val);
 
-export function and<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Context) => WhereAttributeHash {
-  return function (ctx?: Context): WhereAttributeHash {
+export function and<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+  return function (ctx?: Context): WhereAttributeHash<Attributes<M>> {
     const criteria = {};
     for (const cond of args) {
       if (typeof cond === 'function') {
@@ -536,8 +609,8 @@ export function and<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Contex
   };
 }
 
-export function or<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Context) => WhereAttributeHash {
-  return function (ctx?): WhereAttributeHash {
+export function or<M extends Model>(...args: Array<WhereArg<M>>): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+  return function (ctx?): WhereAttributeHash<Attributes<M>> {
     const orOptions = [];
     for (const conditions of args) {
       if (typeof conditions === 'function') {
