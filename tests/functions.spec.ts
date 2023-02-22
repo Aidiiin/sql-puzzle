@@ -588,7 +588,7 @@ describe('testing findAll', () => {
 
   test('should return the row where flas is true and (id equal 3 or name = janedoe2)', async () => {
     expect(
-      await findAll<User>(
+      await findAll(
         ...args,
         select('id'),
         where(
