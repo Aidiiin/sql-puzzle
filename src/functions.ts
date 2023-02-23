@@ -22,6 +22,7 @@ import {
   IncludeOptions,
   ModelType,
   GroupOption,
+  CountOptions,
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
 import {getValueFromArgs, populateQueryOptions} from './utils';
@@ -186,6 +187,9 @@ export function from<M extends Model> (arg: FromArg<M>): (ctx?: Context) => Mode
 type LockArg = LOCK | ((ctx?: Context) => LOCK);
 type OptionArg = BooleanArg | SelectArg | NumberArg | LockArg;
 
+// export type OptionKey<M extends Model> = keyof FindOptions<Attributes<M>> | keyof CountOptions<Attributes<M>>
+export type AllOptions<M extends Model> = FindOptions<Attributes<M>> | CountOptions<Attributes<M>>;
+
 export function option<M extends Model> (
   key: keyof FindOptions<Attributes<M>>,
   // val: OptionValue,
@@ -203,22 +207,47 @@ export function option<M extends Model> (
   };
 }
 
+export function countOption<M extends Model> (
+  key: keyof CountOptions<Attributes<M>>,
+  // val: OptionValue,
+): (arg: OptionArg) => (ctx?: Context) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
+  return function (
+    arg: OptionArg,
+  ): (ctx?: Context) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
+    return function _option (ctx?: Context): Pick<CountOptions<CountOptions<M>>, keyof CountOptions<Attributes<M>>> {
+      if (typeof arg === 'function') {
+        return {[key]: arg(ctx)};
+      } else {
+        return {[key]: arg};
+      }
+    };
+  };
+}
+
 export const raw: <M extends Model>(arg: BooleanArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'raw'> =
   option('raw');
+
 export const benchmark: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'benchmark'> = option('benchmark');
+
 export const skipLocked: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'skipLocked'> = option('skipLocked');
+
 export const nest: <M extends Model>(arg: BooleanArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'nest'> =
   option('nest');
+
+export const distinctOpt: <M extends Model>(arg: BooleanArg) => (ctx?: Context)
+=> Pick<CountOptions<Attributes<M>>, 'distinct'> = countOption('distinct');
+
 export const paranoid: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'paranoid'> = option('paranoid');
 
 export const lock: <M extends Model>(arg: LockArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'lock'> =
   option('lock');
+
 export const logging: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'logging'> = option('logging');
@@ -531,7 +560,8 @@ export function and<M extends Model> (
   };
 }
 
-export function or<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
+export function or<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context)
+=> WhereAttributeHash<Attributes<M>> {
   return function (ctx?): WhereAttributeHash<Attributes<M>> {
     const orOptions = [];
     for (const conditions of args) {
@@ -706,7 +736,6 @@ export function having<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Co
         }
       }
     }
-
     return {having: criteria};
   };
 }
@@ -729,19 +758,6 @@ export function groupBy (...args: GroupByArg[]): (ctx?: Context) => GroupByRetur
   };
 }
 
-
-// doc gen for params
-// aggregate
-// findone
-// count
-// findAndCountAll
-// findCreateFind
-// findOrBuild
-// findOrCreate
-// min, max, sum
-// update
-// upsert
-
 /** Query methods
  * --------------------------------------------------**/
 
@@ -750,6 +766,9 @@ export type From<M extends Model> = (ctx?: Context) => ModelStatic<M>;
 export type Option<M extends Model> = (
   ctx?: Context,
 ) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
+export type CountOption<M extends Model> = (
+  ctx?: Context,
+) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>>;
 
 export type FindArgOrder = (ctx?: Context) => OrderReturn;
 
@@ -775,3 +794,129 @@ export function findAll<M extends Model> (
     }
   };
 }
+
+export function findAndCountAll<M extends Model> (
+  ...args: Array<FindAllArg<M>>
+): (ctx?: Context) => Promise<Either<Error, {rows: M[], count: number}>> {
+  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
+  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  return async function _findAndCountAllInner (ctx?: Context): Promise<Either<Error, {rows: M[], count: number}>> {
+    try {
+      const model = getModel(ctx);
+      const options = populateOptions(ctx);
+      return right(await model.findAndCountAll<M>(options));
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        return left(e);
+      } else {
+        return left(new Error('Unknown error'));
+      }
+    }
+  };
+}
+
+export function findOne<M extends Model> (
+  ...args: Array<FindAllArg<M>>
+): (ctx?: Context) => Promise<Either<Error, M>> {
+  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
+  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  return async function _findOneInner (ctx?: Context): Promise<Either<Error, M>> {
+    try {
+      const model = getModel(ctx);
+      const options = populateOptions(ctx);
+      const result = await model.findOne<M>(options);
+      if (result != null) {
+        return right(result);
+      } else {
+        return left(new Error('Row not found!'));
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        return left(e);
+      } else {
+        return left(new Error('Unknown error'));
+      }
+    }
+  };
+}
+
+export function aggregate<T, M extends Model> (functionName: string):
+(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>) => (ctx?: Context) => Promise<Either<Error, T>> {
+  return function _aggregate (attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>): (ctx?: Context)
+  => Promise<Either<Error, T>> {
+    const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
+    const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+    return async function _aggregateInner (ctx?: Context): Promise<Either<Error, T>> {
+      try {
+        const model: ModelStatic<M> = getModel(ctx);
+        const options: FindOptions<Attributes<M>> = populateOptions(ctx);
+        return right(await model.aggregate<T, M>(attribute, functionName, options));
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          return left(e);
+        } else {
+          return left(new Error('Unknown error'));
+        }
+      }
+    };
+  };
+}
+
+export const aggSum: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+=> (ctx?: Context) => Promise<Either<Error, T>> = aggregate('sum');
+
+export const aggMax: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+=> (ctx?: Context) => Promise<Either<Error, T>> = aggregate('max');
+
+export const aggMin: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+=> (ctx?: Context) => Promise<Either<Error, T>> = aggregate('min');
+
+export type CountRowsArg<M extends Model> = Select | From<M> | CountOption<M> | Where<M> | FindArgOrder;
+
+export function countRows<M extends Model> (
+  ...args: Array<CountRowsArg<M>>
+): (ctx?: Context) => Promise<Either<Error, number>> {
+  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
+  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  return async function _countInner (ctx?: Context): Promise<Either<Error, number>> {
+    try {
+      const model = getModel(ctx);
+      const options = populateOptions(ctx);
+      return right(await model.count<M>(options));
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        return left(e);
+      } else {
+        return left(new Error('Unknown error'));
+      }
+    }
+  };
+}
+
+// export function findOrCreate<M extends Model> (
+//   ...args: Array<CountRowsArg<M>>
+// ): (ctx?: Context) => Promise<Either<Error, [M, boolean]>> {
+//   const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
+//   const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+//   return async function _countInner (ctx?: Context): Promise<Either<Error, [M, boolean]>> {
+//     try {
+//       const model = getModel(ctx);
+//       const options = populateOptions(ctx);
+//       return right(await model.findOrCreate<M>(options));
+//     } catch (e: unknown) {
+//       if (e instanceof Error) {
+//         return left(e);
+//       } else {
+//         return left(new Error('Unknown error'));
+//       }
+//     }
+//   };
+// }
+
+// doc gen for params
+
+// findCreateFind
+// findOrBuild
+// findOrCreate
+// update
+// upsert

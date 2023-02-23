@@ -1,11 +1,9 @@
 /* eslint-disable */
-import {Either, left, right, tryCatch} from 'fp-ts/lib/Either';
 import type {FindOptions, Transactionable, Attributes, Model, LOCK} from 'sequelize';
-import lodash from 'lodash';
 import {type Context, type FindAllArg, type FindAllArgReturn} from './functions';
 /* eslint-enable */
 
-export function getValueFromArgs<T, M extends Model>(
+export function getValueFromArgs<T, M extends Model> (
   funcName: string,
   args: Array<FindAllArg<M>>,
 ): (ctx?: Context) => T {
@@ -14,7 +12,7 @@ export function getValueFromArgs<T, M extends Model>(
     throw new Error(`getValueFromArgs invoked without passing '${funcName}' in args.`);
   }
 
-  return function _getValueFromArgs(ctx?: Context): T {
+  return function _getValueFromArgs (ctx?: Context): T {
     // TODO improve typing
     if (typeof filteredArgs[0] === 'function') {
       return filteredArgs[0](ctx) as T;
@@ -24,7 +22,7 @@ export function getValueFromArgs<T, M extends Model>(
   };
 }
 
-export function populateQueryOptions<TAttributes, M extends Model>(
+export function populateQueryOptions<TAttributes, M extends Model> (
   args: Array<FindAllArg<M>>,
 ): (ctx?: Context) => FindOptions<TAttributes> {
   return function (ctx?: Context): FindOptions<TAttributes> {
@@ -50,6 +48,32 @@ export function populateQueryOptions<TAttributes, M extends Model>(
   };
 }
 
-function merge(acc: object, obj: object): object {
+function merge (acc: object, obj: object): object {
   return {...acc, ...obj};
 }
+
+// interface ReusableFunction extends Function {
+//   __bindedArgs?: any[]
+// }
+
+// export function makeReusableFunction (func: ReusableFunction): ReusableFunction {
+//   return function _reusableFunction (...args: any[]): any {
+//     if (args.length > 0) {
+//       const toBindArgs = [];
+//       for (const arg of args) {
+//         if (typeof arg === 'function' && Array.isArray(arg.__bindedArgs)) {
+//           // get bounded args of the function
+//           toBindArgs.push(...arg.__bindedArgs);
+//         } else {
+//           toBindArgs.push(arg);
+//         }
+//       }
+
+//       const res: ReusableFunction = makeReusableFunction(func.bind(null, ...toBindArgs));
+//       res.__bindedArgs = toBindArgs;
+//       return res;
+//     } else {
+//       return func();
+//     }
+//   };
+// }
