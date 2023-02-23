@@ -19,26 +19,22 @@ import {
   WhereGeometryOptions,
   InferAttributes,
   InferCreationAttributes,
+  IncludeOptions,
+  ModelType,
+  GroupOption,
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
 import {getValueFromArgs, populateQueryOptions} from './utils';
 import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 
-// export type Value = string | number | boolean | object;
-
-// export type CFunction = (ctx?: Context) => Value;
 export type Context = object & Transactionable;
-
-export type OptionValue = boolean | LOCK | string;
-
-// export type Arg = string | number | boolean | object | ArgFunction;
-
 type StringArg = string | ((ctx?: Context) => string);
 type BooleanArg = boolean | ((ctx?: Context) => boolean);
 type NumberArg = number | ((ctx?: Context) => number);
 
 type SelectArg = string | ProjectionAlias | ((ctx?: Context) => ProjectionAlias) | ((ctx?: Context) => string);
+
 interface SelectAttributes {
   attributes:
   | {
@@ -48,8 +44,8 @@ interface SelectAttributes {
   | Array<string | ProjectionAlias>
 }
 
-function include (...args: SelectArg[]): (ctx: Context) => { include: Array<ProjectionAlias | string> } {
-  return function _include (ctx?: Context): { include: Array<ProjectionAlias | string> } {
+function include (...args: SelectArg[]): (ctx: Context) => {include: Array<ProjectionAlias | string>} {
+  return function _include (ctx?: Context): {include: Array<ProjectionAlias | string>} {
     const includedAtts: Array<ProjectionAlias | string> = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
@@ -58,12 +54,12 @@ function include (...args: SelectArg[]): (ctx: Context) => { include: Array<Proj
         includedAtts.push(arg);
       }
     }
-    return { include: includedAtts };
+    return {include: includedAtts};
   };
 }
 
-function exclude (...args: StringArg[]): (ctx?: Context) => { exclude: string[] } {
-  return function _exclude (ctx?: Context): { exclude: string[] } {
+function exclude (...args: StringArg[]): (ctx?: Context) => {exclude: string[]} {
+  return function _exclude (ctx?: Context): {exclude: string[]} {
     const excludedAtts: string[] = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
@@ -72,19 +68,19 @@ function exclude (...args: StringArg[]): (ctx?: Context) => { exclude: string[] 
         excludedAtts.push(arg);
       }
     }
-    return { exclude: excludedAtts };
+    return {exclude: excludedAtts};
   };
 }
 
-type Exclude = (ctx?: Context) => { exclude: string[] };
-type Include = (ctx?: Context) => { include: Array<ProjectionAlias | string> };
+type Exclude = (ctx?: Context) => {exclude: string[]};
+type Include = (ctx?: Context) => {include: Array<ProjectionAlias | string>};
 
 export function select2 (includeArg?: Include, excludeArg?: Exclude): (ctx?: Context) => SelectAttributes {
   if (includeArg == null && excludeArg == null) {
     throw new Error('No arguments passed to the select function.');
   }
   return function _select (ctx?: Context): SelectAttributes {
-    const result: SelectAttributes = { attributes: {} };
+    const result: SelectAttributes = {attributes: {}};
     if (includeArg != null && !(result.attributes instanceof Array)) {
       result.attributes.include = includeArg(ctx).include;
     }
@@ -109,7 +105,7 @@ export function select (...args: SelectArg[]): (ctx?: Context) => SelectAttribut
         attributes.push(arg);
       }
     }
-    return { attributes };
+    return {attributes};
   };
 }
 
@@ -120,12 +116,6 @@ export function literal (raw: string): Literal {
 export function fn (functionName: string, col: string, ...args: unknown[]): (ctx?: Context) => Fn {
   return function _fn (ctx?: Context): Fn {
     const functionArgs = [];
-    // recursive fn call
-    // let col;
-    // if (typeof arg2 === 'function') {
-    //   col = arg2(ctx);
-    // } else {
-    // }
     for (const arg of args) {
       if (typeof arg === 'function') {
         functionArgs.push(arg(ctx));
@@ -205,9 +195,9 @@ export function option<M extends Model> (
   ): (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
     return function _option (ctx?: Context): Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
       if (typeof arg === 'function') {
-        return { [key]: arg(ctx) };
+        return {[key]: arg(ctx)};
       } else {
-        return { [key]: arg };
+        return {[key]: arg};
       }
     };
   };
@@ -259,38 +249,9 @@ export function where<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Con
       }
     }
 
-    return { where: criteria };
+    return {where: criteria};
   };
 }
-
-// export type WhereValue =
-//   | string
-//   | number
-//   | bigint
-//   | boolean
-//   | Date
-//   | Buffer
-//   | null
-//   | WhereAttributeHash<any> // for JSON columns
-//   | Col // reference another column
-//   | Fn
-//   | WhereGeometryOptions;
-
-// type AllowArray<T> = T | T[];
-// type AllowNotOrAndWithImplicitAndArrayRecursive<T> = AllowArray<
-//   // this is the equivalent of Op.and
-//   | T
-//   | { [Op.or]: AllowArray<AllowNotOrAndWithImplicitAndArrayRecursive<T>> }
-//   | { [Op.and]: AllowArray<AllowNotOrAndWithImplicitAndArrayRecursive<T>> }
-//   | { [Op.not]: AllowNotOrAndWithImplicitAndArrayRecursive<T> }
-// >;
-// export type WhereReturnValue<TAttributes = any> = AllowNotOrAndWithImplicitAndArrayRecursive<WhereAttributeHash<TAttributes>>
-
-// type AllowNotOrAndRecursive<T> =
-//   | T
-//   | { [Op.or]: AllowArray<AllowNotOrAndRecursive<T>> }
-//   | { [Op.and]: AllowArray<AllowNotOrAndRecursive<T>> }
-//   | { [Op.not]: AllowNotOrAndRecursive<T> };
 
 export type WhereOp = keyof WhereOperators;
 export type WhereCol<M extends Model> = keyof WhereAttributeHash<Attributes<M>>;
@@ -354,29 +315,6 @@ export type WhereValArg<AttrType> =
   | WhereValArgRegexp<AttrType>
   | WhereValArgStrictLeft<AttrType>;
 
-// WhereOperators<AttributeType>
-// | AllowNotOrAndRecursive<
-// | AttributeType extends any[]
-//   ? WhereOperators<AttributeType>[typeof Op.eq] | WhereOperators<AttributeType>
-//   : (
-//     | WhereOperators<AttributeType>[typeof Op.in]
-//     | WhereOperators<AttributeType>[typeof Op.eq]
-//     | WhereOperators<AttributeType>
-//   )
-// >
-// TODO: this needs a simplified version just for JSON columns
-// | WhereAttributeHash<any>
-
-// WhereAttributeHashValue<T>
-// | ((ctx?: Context) => WhereAttributeHashValue<T>)
-// class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
-//   declare id: number;
-//   declare name: string;
-//   declare email: string;
-// }
-
-// export const name: WhereCol<User> = '$email$';
-
 export function condition<M extends Model, AttrType = any> (
   op: WhereOp,
   col: WhereCol<M>,
@@ -385,28 +323,13 @@ export function condition<M extends Model, AttrType = any> (
   return function _condition (ctx?: Context): WhereAttributeHash<Attributes<M>> {
     if (typeof val === 'function' && val instanceof Function) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return <WhereAttributeHash<Attributes<M>>>{ [col]: { [op]: val(ctx) } };
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[op]: val(ctx)}};
     } else {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return <WhereAttributeHash<Attributes<M>>>{ [col]: { [op]: val } };
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[op]: val}};
     }
   };
 }
-
-// export function is<M extends Model, AttributeType = any>(
-//   col: WhereCol<M>,
-//   val: WhereValArgIs<AttributeType>,
-// ): (ctx?: Context) => WhereAttributeHash<Attributes<M>> {
-//   return function _is(ctx?: Context): WhereAttributeHash<Attributes<M>> {
-//     if (typeof val === 'function') {
-//       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-//       return <WhereAttributeHash<Attributes<M>>>{[col]: val(ctx)};
-//     } else {
-//       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-//       return <WhereAttributeHash<Attributes<M>>>{[col]: val};
-//     }
-//   };
-// }
 
 export const isTrue: <M extends Model>(
   col: WhereCol<M>,
@@ -552,18 +475,13 @@ export function contains<M extends Model, AttrType = any> (
   return function _contains (ctx?: Context): WhereAttributeHash<Attributes<M>> {
     if (typeof val === 'function' && val instanceof Function) {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return <WhereAttributeHash<Attributes<M>>>{ [col]: { [Op.contains]: val(ctx) } };
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[Op.contains]: val(ctx)}};
     } else {
       // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      return <WhereAttributeHash<Attributes<M>>>{ [col]: { [Op.contains]: val } };
+      return <WhereAttributeHash<Attributes<M>>>{[col]: {[Op.contains]: val}};
     }
   };
 }
-
-// export const contains: <M extends Model, AttrType = any>(col: WhereCol<M>, val: WhereValArgContains<AttrType>) => (ctx?: Context) => WhereAttributeHash = (
-//   col,
-//   val,
-// ) => condition(Op.contains, col, val);
 
 export const contained: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
@@ -609,7 +527,7 @@ export function and<M extends Model> (
         Object.assign(criteria, temp);
       }
     }
-    return { [Op.and]: criteria };
+    return {[Op.and]: criteria};
   };
 }
 
@@ -624,7 +542,7 @@ export function or<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Contex
         }
       }
     }
-    return { [Op.or]: orOptions };
+    return {[Op.or]: orOptions};
   };
 }
 
@@ -649,7 +567,7 @@ export function order (...args: OrderArg[]): (ctx?: Context) => OrderReturn {
         values.push(arg);
       }
     }
-    return { order: [values] };
+    return {order: [values]};
   };
 }
 
@@ -672,62 +590,157 @@ export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderRetu
 /** joins
  * --------------------------------------------------**/
 
-// function joinOn (...args) {
-//   return async function (ctx, tableName) {
-//     const criteria = {}
-//     for (const cond of args) {
-//       if (typeof cond === 'function') {
-//         const temp = await cond(ctx, tableName)
-//         if (temp === undefined) {
-//           continue
-//         }
-//         Object.assign(criteria, temp)
-//       }
-//     }
-//     return {on: criteria}
-//   }
-// }
+export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
+  declare id: number;
+  declare name: string;
+  declare email: string;
+}
+// export type JoinArg = ModelStatic<any> | ((ctx?: Context) => ModelStatic<any>);
+export type JoinOptions = Pick<IncludeOptions, 'separate' | 'subQuery' | 'as' | 'right' | 'required' | 'limit'>;
 
-// function include (...args) {
-//   return async function _include (ctx, tableName) {
-//     const relations = []
-//     for (const arg of args) {
-//       if (typeof arg === 'function') {
-//         const value = await arg(ctx, tableName)
-//         if (value !== undefined) {
-//           relations.push(arg)
-//         }
-//       }
-//     }
-//     return {include: relations}
-//   }
-// }
+export function joinOption (
+  key: keyof JoinOptions,
+): (arg: OptionArg) => (ctx?: Context) => Pick<JoinOptions, keyof JoinOptions> {
+  return function (
+    arg: OptionArg,
+  ): (ctx?: Context) => Pick<JoinOptions, keyof JoinOptions> {
+    return function _option (ctx?: Context): Pick<JoinOptions, keyof JoinOptions> {
+      if (typeof arg === 'function') {
+        return {[key]: arg(ctx)};
+      } else {
+        return {[key]: arg};
+      }
+    };
+  };
+}
 
-// function relation (name, ...args) {
-//   return async function _relation (ctx, tableName) {
-//     // todo fix ctx.app
-//     const db = ctx.app.get(optionKeys.db)
-//     const relationObject = {model: db.models[name]}
-//     for (const arg of args) {
-//       if (typeof arg === 'function') {
-//         const options = await arg(ctx, tableName)
-//         if (options !== undefined) {
-//           Object.assign(relationObject, options)
-//         }
-//       } else if (lodash.isPlainObject(arg)) {
-//         Object.assign(relationObject, arg)
-//       }
-//     }
-//     return relationObject
-//   }
-// }
+export const separate: (arg: BooleanArg) => (ctx?: Context) => Pick<JoinOptions, 'separate'> = joinOption('separate');
+export const subQuery: (arg: BooleanArg) => (ctx?: Context) => Pick<JoinOptions, 'subQuery'> = joinOption('subQuery');
+export const joinAlias: (arg: StringArg) => (ctx?: Context) => Pick<JoinOptions, 'as'> = joinOption('as');
+export const limitJoin: (arg: NumberArg) => (ctx?: Context) => Pick<JoinOptions, 'limit'> = joinOption('limit');
 
-// transacitons
-// group by
-// having
-// join relations
-// count queries
+export type JoinOptionReturn = (ctx?: Context) => JoinOptions;
+
+export function on<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereOptions<Attributes<M>> {
+  return function _on (ctx?: Context) {
+    const criteria = {};
+    for (const cond of args) {
+      if (typeof cond === 'function') {
+        const temp = cond(ctx);
+        if (temp != null) {
+          Object.assign(criteria, temp);
+        }
+      }
+    }
+
+    return {on: criteria};
+  };
+}
+
+export type ModelArg = Model | ((ctx?: Context) => Model);
+export type ModelReturn = Pick<IncludeOptions, 'model' | keyof JoinOptions>;
+export type ModelJoin = (ctx?: Context) => ModelReturn;
+
+export function model (arg: ModelArg): (ctx?: Context) => ModelReturn {
+  return function _model (ctx?: Context): ModelReturn {
+    if (typeof arg === 'function' && arg instanceof Function && arg.constructor == null) {
+      return {model: arg(ctx) as unknown as ModelType};
+    } else if (arg.constructor != null) {
+      return {model: arg as unknown as ModelType};
+    } else {
+      return {model: arg as unknown as ModelType};
+    }
+  };
+}
+
+export type JoinArg<M extends Model> = ModelJoin | Where<M> | Select | JoinOptionReturn;
+
+export function join<M extends Model> (...args: Array<JoinArg<M>>): (ctx?: Context) => IncludeOptions {
+  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  return function _join (ctx?: Context): IncludeOptions {
+    const options = populateOptions(ctx) as IncludeOptions;
+    return options;
+  };
+}
+
+export const rightJoin: <M extends Model>(...args: Array<JoinArg<M>>) => (ctx?: Context) => IncludeOptions =
+(...args) => join(joinOption('right')(true), ...args);
+
+export const innerJoin: <M extends Model>(...args: Array<JoinArg<M>>) => (ctx?: Context) => IncludeOptions =
+(...args) => join(joinOption('required')(true), ...args);
+
+export type Join = (ctx?: Context) => IncludeOptions;
+export type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
+
+export type IncludeArg = Join;
+export interface IncludeReturn {include: IncludeOptions[]}
+
+export function incldue (...args: IncludeArg[]): (ctx?: Context) => IncludeReturn {
+  return function _incldue (ctx?: Context): IncludeReturn {
+    const relations: IncludeOptions[] = [];
+    for (const arg of args) {
+      if (typeof arg === 'function') {
+        const value = arg(ctx);
+        if (value !== undefined) {
+          relations.push(value);
+        }
+      }
+    }
+    return {include: relations};
+  };
+}
+
+// todo: through for joins
+
+/** Group by queries
+ * --------------------------------------------------**/
+
+export function having<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereOptions<Attributes<M>> {
+  return function _having (ctx?: Context) {
+    const criteria = {};
+    for (const cond of args) {
+      if (typeof cond === 'function') {
+        const temp = cond(ctx);
+        if (temp != null) {
+          Object.assign(criteria, temp);
+        }
+      }
+    }
+
+    return {having: criteria};
+  };
+}
+
+export type GroupByArg = StringArg | Fn | Col | ((ctx?: Context) => Fn | Col);
+export interface GroupByReturn {group: Array<StringArg | Fn | Col>}
+
+export function groupBy (...args: GroupByArg[]): (ctx?: Context) => GroupByReturn {
+  return function _groupBy (ctx?: Context): GroupByReturn {
+    const group: Array<StringArg | Fn | Col> = [];
+    for (const arg of args) {
+      if (typeof arg === 'function') {
+        if (ctx != null) {
+          group.push(arg(ctx));
+        }
+      }
+    }
+
+    return {group};
+  };
+}
+
+
 // doc gen for params
+// aggregate
+// findone
+// count
+// findAndCountAll
+// findCreateFind
+// findOrBuild
+// findOrCreate
+// min, max, sum
+// update
+// upsert
 
 /** Query methods
  * --------------------------------------------------**/
@@ -737,7 +750,7 @@ export type From<M extends Model> = (ctx?: Context) => ModelStatic<M>;
 export type Option<M extends Model> = (
   ctx?: Context,
 ) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
-export type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
+
 export type FindArgOrder = (ctx?: Context) => OrderReturn;
 
 export type FindAllArg<M extends Model> = Select | From<M> | Option<M> | Where<M> | FindArgOrder;
@@ -748,7 +761,7 @@ export function findAll<M extends Model> (
 ): (ctx?: Context) => Promise<Either<Error, M[]>> {
   const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
   const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
-  return async function _findAll (ctx?: Context): Promise<Either<Error, M[]>> {
+  return async function _findAllInner (ctx?: Context): Promise<Either<Error, M[]>> {
     try {
       const model = getModel(ctx);
       const options = populateOptions(ctx);

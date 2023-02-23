@@ -16,8 +16,10 @@ module.exports = {
   rules: {
     '@typescript-eslint/return-await': 'off',
     semi: ['error', 'always'],
-    'comma-dangle': ['error', 'always-multiline'],
-    '@typescript-eslint/comma-dangle': ['error', 'always-multiline'],
     '@typescript-eslint/semi': ['error', 'always'],
+    'comma-dangle': 'off',
+    '@typescript-eslint/comma-dangle': ['error', 'always-multiline'],
+    'object-curly-spacing': 'off',
+    '@typescript-eslint/object-curly-spacing': ['error', 'never'],
   },
 };
