@@ -1,7 +1,7 @@
 {
   "name": "sql-puzzle",
   "version": "1.0.0",
-  "description": "",
+  "description": "A highly composable and functional query builder for Sequelize, written in TypeScript.",
   "main": "index.js",
   "scripts": {
     "test": "jest",
@@ -11,8 +11,8 @@
     "type": "git",
     "url": "git+https://github.com/Aidiiin/sql-puzzle.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Aidin Rasti",
+  "license": "MIT",
   "type": "module",
   "bugs": {
     "url": "https://github.com/Aidiiin/sql-puzzle/issues"

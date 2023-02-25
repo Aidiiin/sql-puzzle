@@ -1,6 +1,6 @@
-import {type InferAttributes, type InferCreationAttributes, Model, ModelStatic} from 'sequelize';
+import {type InferAttributes, type InferCreationAttributes, Model, type ModelStatic} from 'sequelize';
 import {getValueFromArgs, populateQueryOptions} from '../src/utils';
-import {benchmark, FindAllArg, from, raw, select, type Context} from '../src/functions';
+import {benchmark, type FindAllArg, from, raw, select, type Context} from '../src/functions';
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: number;
@@ -9,7 +9,6 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
 }
 
 describe('testing getValueFromArgs', () => {
-
   const args: Array<FindAllArg<User>> = [from(User), select('name', () => 'id')];
   const ctx: Context = {};
 
@@ -22,14 +21,12 @@ describe('testing getValueFromArgs', () => {
   });
 });
 
-
 describe('testing populateQueryOptions', () => {
-
   const args: Array<FindAllArg<User>> = [from(User), select('name', () => 'id'), raw(true), benchmark(true)];
   const ctx: Context = {};
 
   test('should return the correct option object', () => {
-    expect(populateQueryOptions<ModelStatic<User>, User>(args)(ctx)).toStrictEqual({attributes: ['name', 'id'], raw: true, benchmark: true});
+    expect(populateQueryOptions<ModelStatic<User>, User>(args)(ctx))
+      .toStrictEqual({attributes: ['name', 'id'], raw: true, benchmark: true});
   });
-
 });
