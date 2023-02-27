@@ -1,5 +1,5 @@
 /* eslint-disable */
-import type {FindOptions, Transactionable, Attributes, Model, LOCK} from 'sequelize';
+import type {FindOptions, Transactionable, Attributes, Model, LOCK, IncludeOptions, ModelStatic} from 'sequelize';
 import {type Context, type FindAllArg, type FindAllArgReturn} from './functions';
 /* eslint-enable */
 
@@ -22,6 +22,15 @@ export function getValueFromArgs<T, M extends Model> (
   };
 }
 
+export function isConstructor (f: any): boolean {
+  try {
+    Reflect.construct(String, [], f);
+  } catch (e) {
+    return false;
+  }
+  return true;
+}
+
 export function populateQueryOptions<TAttributes, M extends Model> (
   args: Array<FindAllArg<M>>,
 ): (ctx?: Context) => FindOptions<TAttributes> {
@@ -31,19 +40,34 @@ export function populateQueryOptions<TAttributes, M extends Model> (
     if (ctx != null) {
       options.transaction = ctx.transaction;
     }
-    const values: Array<FindAllArgReturn<M>> = args.map((arg: FindAllArg<M>) => {
-      if (typeof arg === 'function') {
+    const values = args.map((arg: FindAllArg<M>) => {
+      if (!isConstructor(arg) && typeof arg === 'function') {
         return arg(ctx);
       } else {
         return arg;
       }
     });
-    const result: FindOptions = values.reduce((acc: object, val: FindAllArgReturn<M>) => {
-      if (typeof val === 'object' && val !== null) {
+    const includes: IncludeOptions[] = [];
+    console.log({acccccccccccc: JSON.stringify(values)});
+    values.filter((val) => '_join' in val).forEach((val) => {
+      if ('_join' in val && Array.isArray(val._join)) {
+        val._join.forEach((join) => {
+          includes.push(join);
+        });
+        // delete val._join;
+      }
+    });
+    const result: FindOptions = values.reduce((acc: object, val: any) => {
+      if (typeof val === 'object' && val != null) {
         return merge(acc, val);
       }
       return acc;
     }, {});
+
+    console.log({result: JSON.stringify(result), incs: JSON.stringify(includes)});
+    if (includes.length > 0) {
+      result.include = includes;
+    }
     return result;
   };
 }

@@ -61,7 +61,7 @@ import {
 } from '../src/functions';
 /* eslint-enable */
 
-const db: Sequelize = new Sequelize('sqlite::memory:', { logging: false });
+const db: Sequelize = new Sequelize('sqlite::memory:', {logging: false});
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: number;
@@ -169,7 +169,10 @@ describe('testing findAll', () => {
   });
 
   test('should return all of the created records', async () => {
-    expect(await findAll<User>(from(User), raw(true), select('email', 'id', 'name'))(ctx)).toEqual(
+    expect(await findAll<User>(
+      from(User),
+      raw(true),
+      select('email', 'id', 'name'))(ctx)).toEqual(
       right(recordsWithoutDate),
     );
   });
@@ -630,7 +633,7 @@ describe('testing findAll', () => {
         ),
         limit(3),
         desc('id'),
-        logging(true),
+        // logging(true),
       )(ctx),
     ).toEqual(
       right([

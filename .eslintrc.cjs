@@ -21,6 +21,6 @@ module.exports = {
     '@typescript-eslint/comma-dangle': ['error', 'always-multiline'],
     'object-curly-spacing': 'off',
     '@typescript-eslint/object-curly-spacing': ['error', 'never'],
-    'max-len': ['error', {code: 120, ignoreComments: true}],
+    'max-len': ['warn', {code: 100, ignoreComments: true}],
   },
 };

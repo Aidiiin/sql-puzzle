@@ -25,7 +25,7 @@ import {
   CountOptions,
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
-import {getValueFromArgs, populateQueryOptions} from './utils';
+import {getValueFromArgs, isConstructor, populateQueryOptions} from './utils';
 import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 
@@ -168,16 +168,14 @@ export function as (col: AsArg, alias: string): (ctx?: Context) => ProjectionAli
   };
 }
 
-type FromArg<M extends Model> = ((ctx?: Context) => ModelStatic<M>) | ModelStatic<M>;
+type FromArg<T extends Model> = ((ctx?: Context) => T) | T;
 
-export function from<M extends Model> (arg: FromArg<M>): (ctx?: Context) => ModelStatic<M> {
-  return function _from (ctx?: Context): ModelStatic<M> {
-    if (typeof arg === 'function' && arg.constructor != null) {
-      return arg as ModelStatic<M>;
-    } else if (typeof arg === 'function' && arg instanceof Function) {
+export function from<T extends Model> (arg: FromArg<T>): (ctx?: Context) => T {
+  return function _from (ctx?: Context): T {
+    if (!isConstructor(arg) && typeof arg === 'function') {
       return arg(ctx);
     } else {
-      return arg;
+      return arg as T;
     }
   };
 }
@@ -601,7 +599,8 @@ export function order (...args: OrderArg[]): (ctx?: Context) => OrderReturn {
   };
 }
 
-export const desc: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) => order(...args, 'DESC');
+export const desc: (...args: OrderArg[])
+=> (ctx?: Context) => OrderReturn = (...args) => order(...args, 'DESC');
 
 export const descNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'DESC nulls first');
@@ -609,7 +608,8 @@ export const descNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => OrderRe
 export const descNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'DESC nulls last');
 
-export const asc: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) => order(...args, 'ASC');
+export const asc: (...args: OrderArg[])
+=> (ctx?: Context) => OrderReturn = (...args) => order(...args, 'ASC');
 
 export const ascNullsFirst: (...args: OrderArg[]) => (ctx?: Context) => OrderReturn = (...args) =>
   order(...args, 'ASC nulls first');
@@ -619,14 +619,8 @@ export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderRetu
 
 /** joins
  * --------------------------------------------------**/
-
-export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
-  declare id: number;
-  declare name: string;
-  declare email: string;
-}
-// export type JoinArg = ModelStatic<any> | ((ctx?: Context) => ModelStatic<any>);
-export type JoinOptions = Pick<IncludeOptions, 'separate' | 'subQuery' | 'as' | 'right' | 'required' | 'limit'>;
+export type JoinOptions = Pick<IncludeOptions, 'separate' | 'subQuery' | 'as' | 'right'
+| 'required' | 'limit'>;
 
 export function joinOption (
   key: keyof JoinOptions,
@@ -644,14 +638,19 @@ export function joinOption (
   };
 }
 
-export const separate: (arg: BooleanArg) => (ctx?: Context) => Pick<JoinOptions, 'separate'> = joinOption('separate');
-export const subQuery: (arg: BooleanArg) => (ctx?: Context) => Pick<JoinOptions, 'subQuery'> = joinOption('subQuery');
-export const joinAlias: (arg: StringArg) => (ctx?: Context) => Pick<JoinOptions, 'as'> = joinOption('as');
-export const limitJoin: (arg: NumberArg) => (ctx?: Context) => Pick<JoinOptions, 'limit'> = joinOption('limit');
+export const separate: (arg: BooleanArg) => (ctx?: Context)
+=> Pick<JoinOptions, 'separate'> = joinOption('separate');
+export const subQuery: (arg: BooleanArg) => (ctx?: Context)
+=> Pick<JoinOptions, 'subQuery'> = joinOption('subQuery');
+export const joinAlias: (arg: StringArg) => (ctx?: Context)
+=> Pick<JoinOptions, 'as'> = joinOption('as');
+export const limitJoin: (arg: NumberArg) => (ctx?: Context)
+=> Pick<JoinOptions, 'limit'> = joinOption('limit');
 
 export type JoinOptionReturn = (ctx?: Context) => JoinOptions;
 
-export function on<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereOptions<Attributes<M>> {
+export function on<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context)
+=> WhereOptions<Attributes<M>> {
   return function _on (ctx?: Context) {
     const criteria = {};
     for (const cond of args) {
@@ -662,65 +661,66 @@ export function on<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Contex
         }
       }
     }
-
     return {on: criteria};
   };
 }
 
-export type ModelArg = Model | ((ctx?: Context) => Model);
+export type ModelArg<T> = T | ((ctx?: Context) => T);
 export type ModelReturn = Pick<IncludeOptions, 'model' | keyof JoinOptions>;
 export type ModelJoin = (ctx?: Context) => ModelReturn;
+export type Constructor<T> = new () => T;
 
-export function model (arg: ModelArg): (ctx?: Context) => ModelReturn {
+export function model<T extends Model> (arg: ModelArg<T>): (ctx?: Context) => ModelReturn {
   return function _model (ctx?: Context): ModelReturn {
-    if (typeof arg === 'function' && arg instanceof Function && arg.constructor == null) {
-      return {model: arg(ctx) as unknown as ModelType};
-    } else if (arg.constructor != null) {
-      return {model: arg as unknown as ModelType};
+    if (!isConstructor(arg) && typeof arg === 'function') {
+      return {model: arg(ctx) as unknown as Constructor<T>};
+      // console.log('_model2',  {model: arg as unknown as ModelType});
     } else {
-      return {model: arg as unknown as ModelType};
+      // console.log('_model3');
+      return {model: arg as unknown as Constructor<T>};
     }
   };
 }
 
-export type JoinArg<M extends Model> = ModelJoin | Where<M> | Select | JoinOptionReturn;
+export type JoinArg<M extends Model> = ModelJoin | Where<M> | Select | JoinOptionReturn | Join;
+export interface JoinReturn {_join: IncludeOptions[]}
+export type Join = (ctx?: Context) => JoinReturn;
 
-export function join<M extends Model> (...args: Array<JoinArg<M>>): (ctx?: Context) => IncludeOptions {
+export function join<M extends Model> (...args: Array<JoinArg<M>>): (ctx?: Context) => JoinReturn {
   const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
-  return function _join (ctx?: Context): IncludeOptions {
+  return function _join (ctx?: Context): JoinReturn {
     const options = populateOptions(ctx) as IncludeOptions;
-    return options;
+    // console.log('_join', options);
+    return {_join: [options]};
   };
 }
 
-export const rightJoin: <M extends Model>(...args: Array<JoinArg<M>>) => (ctx?: Context) => IncludeOptions =
-(...args) => join(joinOption('right')(true), ...args);
+export const rightJoin: <M extends Model>(...args: Array<JoinArg<M>>)
+=> (ctx?: Context) => JoinReturn = (...args) => join(joinOption('right')(true), ...args);
 
-export const innerJoin: <M extends Model>(...args: Array<JoinArg<M>>) => (ctx?: Context) => IncludeOptions =
-(...args) => join(joinOption('required')(true), ...args);
+export const innerJoin: <M extends Model>(...args: Array<JoinArg<M>>)
+=> (ctx?: Context) => JoinReturn = (...args) => join(joinOption('required')(true), ...args);
 
-export type Join = (ctx?: Context) => IncludeOptions;
 export type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
 
-export type IncludeArg = Join;
-export interface IncludeReturn {include: IncludeOptions[]}
+// export type IncludeArg = Join;
 
-export function incldue (...args: IncludeArg[]): (ctx?: Context) => IncludeReturn {
-  return function _incldue (ctx?: Context): IncludeReturn {
-    const relations: IncludeOptions[] = [];
-    for (const arg of args) {
-      if (typeof arg === 'function') {
-        const value = arg(ctx);
-        if (value !== undefined) {
-          relations.push(value);
-        }
-      }
-    }
-    return {include: relations};
-  };
-}
+// export function incldue (...args: IncludeArg[]): (ctx?: Context) => IncludeReturn {
+//   return function _incldue (ctx?: Context): IncludeReturn {
+//     const relations: IncludeOptions[] = [];
+//     for (const arg of args) {
+//       if (typeof arg === 'function') {
+//         const value = arg(ctx);
+//         if (value !== undefined) {
+//           relations.push(value);
+//         }
+//       }
+//     }
+//     return {include: relations};
+//   };
+// }
 
-// todo: through for joins
+// TODO: through for joins
 
 /** Group by queries
  * --------------------------------------------------**/
@@ -762,7 +762,7 @@ export function groupBy (...args: GroupByArg[]): (ctx?: Context) => GroupByRetur
  * --------------------------------------------------**/
 
 export type Select = (ctx?: Context) => SelectAttributes;
-export type From<M extends Model> = (ctx?: Context) => ModelStatic<M>;
+export type From<T extends Model> = (ctx?: Context) => T;
 export type Option<M extends Model> = (
   ctx?: Context,
 ) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
@@ -772,7 +772,12 @@ export type CountOption<M extends Model> = (
 
 export type FindArgOrder = (ctx?: Context) => OrderReturn;
 
-export type FindAllArg<M extends Model> = Select | From<M> | Option<M> | Where<M> | FindArgOrder;
+export type FindAllArg<M extends Model> = Select
+| From<M>
+| Option<M>
+| Where<M>
+| FindArgOrder
+| Join;
 export type FindAllArgReturn<M extends Model> = ReturnType<FindAllArg<M>>;
 
 export function findAll<M extends Model> (
@@ -784,6 +789,7 @@ export function findAll<M extends Model> (
     try {
       const model = getModel(ctx);
       const options = populateOptions(ctx);
+      console.log({options: JSON.stringify(options, null, 2)});
       return right(await model.findAll<M>(options));
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -862,16 +868,23 @@ export function aggregate<T, M extends Model> (functionName: string):
   };
 }
 
-export const aggSum: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+export const aggSum: <T, M extends Model>(attribute:
+keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
 => (ctx?: Context) => Promise<Either<Error, T>> = aggregate('sum');
 
-export const aggMax: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+export const aggMax: <T, M extends Model>(attribute:
+keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
 => (ctx?: Context) => Promise<Either<Error, T>> = aggregate('max');
 
-export const aggMin: <T, M extends Model>(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+export const aggMin: <T, M extends Model>(attribute:
+keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
 => (ctx?: Context) => Promise<Either<Error, T>> = aggregate('min');
 
-export type CountRowsArg<M extends Model> = Select | From<M> | CountOption<M> | Where<M> | FindArgOrder;
+export type CountRowsArg<M extends Model> = Select
+| From<M>
+| CountOption<M>
+| Where<M>
+| FindArgOrder;
 
 export function countRows<M extends Model> (
   ...args: Array<CountRowsArg<M>>
