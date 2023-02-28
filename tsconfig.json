@@ -4,13 +4,14 @@
     "preserveConstEnums": true,
     "module": "es2022",
     "target": "es2021",
-    "outDir": "build",
+    "outDir": "dist",
     "allowUnusedLabels": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "importsNotUsedAsValues": "remove",
-    "exactOptionalPropertyTypes": false
+    "exactOptionalPropertyTypes": false,
+    "declaration": true,
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules"],
 }

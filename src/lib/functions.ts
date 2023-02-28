@@ -25,7 +25,7 @@ import {
   CountOptions,
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
-import {getValueFromArgs, isCallable, populateQueryOptions} from './utils';
+import {isCallable, populateQueryOptions} from './utils';
 import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 

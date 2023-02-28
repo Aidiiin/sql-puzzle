@@ -58,7 +58,7 @@ import {
   not,
   asc,
   desc
-} from '../src/functions';
+} from '../src/lib/functions';
 /* eslint-enable */
 
 const db: Sequelize = new Sequelize('sqlite::memory:', {logging: false});

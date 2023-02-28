@@ -68,7 +68,7 @@ import {
   innerJoin,
   rightJoin,
   order
-} from '../src/functions';
+} from '../src/lib/functions';
 /* eslint-enable */
 
 const db: Sequelize = new Sequelize('sqlite::memory:', {logging: false});
@@ -364,7 +364,7 @@ describe('testing joins', () => {
       from(User), raw(true), nest(true),
       join(model(Post), joinAlias('posts')),
       asc('id'),
-      logging(true),
+      // logging(true),
     )(ctx);
 
     expect(res).toEqual(right([
@@ -450,7 +450,7 @@ describe('testing joins', () => {
       nest(true),
       innerJoin(model(Post), joinAlias('posts')),
       asc('id'),
-      logging(true),
+      // logging(true),
     )(ctx);
 
     expect(res).toEqual(right([
