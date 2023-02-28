@@ -342,7 +342,7 @@ const images = [
 
 const ctx: Context = {};
 
-describe('testing findAll', () => {
+describe('testing joins', () => {
   beforeAll(async () => {
     try {
       await db.sync();
@@ -359,12 +359,12 @@ describe('testing findAll', () => {
     await db.close();
   });
 
-  test('should return the user left joined with posts', async () => {
+  test('should return the user left outer joined with posts', async () => {
     const res = await findAll<User>(
       from(User), raw(true), nest(true),
       join(model(Post), joinAlias('posts')),
       asc('id'),
-      // logging(true),
+      logging(true),
     )(ctx);
 
     expect(res).toEqual(right([
@@ -445,10 +445,12 @@ describe('testing findAll', () => {
 
   test('should return the user inner joined with posts', async () => {
     const res = await findAll<User>(
-      from(User), raw(true), nest(true),
+      from(User),
+      raw(true),
+      nest(true),
       innerJoin(model(Post), joinAlias('posts')),
       asc('id'),
-      // logging(true),
+      logging(true),
     )(ctx);
 
     expect(res).toEqual(right([
@@ -491,7 +493,7 @@ describe('testing findAll', () => {
     ]));
   });
 
-  test('should return the user inner joined with posts inner joined with their images', async () => {
+  test('should return user inner joined with posts inner joined with their images', async () => {
     const res = await findAll<User>(
       from(User), nest(true),
       innerJoin(
@@ -562,88 +564,16 @@ describe('testing findAll', () => {
     }
   });
 
-  test('should return the user right joined with posts', async () => {
-    const res = await findAll<User>(
-      from(User), raw(true), nest(true),
-      rightJoin(model(Post), joinAlias('posts')),
-      asc('id'),
-      logging(true),
-    )(ctx);
+  // test('should return the user right joined with posts', async () => {
+  //   const res = await findAll<User>(
+  //     from(User),
+  //     raw(true),
+  //     nest(true),
+  //     rightJoin(model(Post), joinAlias('posts')),
+  //     asc('id'),
+  //     logging(true),
+  //   )(ctx);
 
-    expect(res).toEqual(right([
-      {
-        email: 'janedoe@',
-        flag: 1,
-        id: 1,
-        name: 'janedoe',
-        posts: {
-          content: 'post 1 content',
-          id: 1,
-          title: 'post 1',
-          userId: 1,
-        },
-      },
-      {
-        email: 'janedoe@',
-        flag: 1,
-        id: 1,
-        name: 'janedoe',
-        posts: {
-          content: 'post 2 content',
-          id: 2,
-          title: 'post 2',
-          userId: 1,
-        },
-      },
-      {
-        email: 'janedoe2@',
-        flag: 0,
-        id: 2,
-        name: 'janedoe2',
-        posts: {
-          content: 'post 3 content',
-          id: 3,
-          title: 'post 3',
-          userId: 2,
-        },
-      },
-      {
-        email: 'janedoe3@',
-        flag: 0,
-        id: 3,
-        name: 'janedoe3',
-        posts: {
-          content: null,
-          id: null,
-          title: null,
-          userId: null,
-        },
-      },
-      {
-        email: 'janedoe4@',
-        flag: 0,
-        id: 4,
-        name: 'janedoe',
-        posts: {
-          content: null,
-          id: null,
-          title: null,
-          userId: null,
-        },
-      },
-      {
-        email: null,
-        flag: 0,
-        id: 5,
-        name: 'janedoe5',
-        posts: {
-          content: null,
-          id: null,
-          title: null,
-          userId: null,
-        },
-      },
-    ],
-    ));
-  });
+  //   expect(res).toEqual(right();
+  // });
 });

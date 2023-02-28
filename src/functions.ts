@@ -25,7 +25,7 @@ import {
   CountOptions,
 } from 'sequelize';
 import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
-import {getValueFromArgs, isConstructor, populateQueryOptions} from './utils';
+import {getValueFromArgs, isCallable, populateQueryOptions} from './utils';
 import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 
@@ -34,7 +34,8 @@ type StringArg = string | ((ctx?: Context) => string);
 type BooleanArg = boolean | ((ctx?: Context) => boolean);
 type NumberArg = number | ((ctx?: Context) => number);
 
-type SelectArg = string | ProjectionAlias | ((ctx?: Context) => ProjectionAlias) | ((ctx?: Context) => string);
+type SelectArg = string | ProjectionAlias | ((ctx?: Context)
+=> ProjectionAlias) | ((ctx?: Context) => string);
 
 interface SelectAttributes {
   attributes:
@@ -45,7 +46,8 @@ interface SelectAttributes {
   | Array<string | ProjectionAlias>
 }
 
-function include (...args: SelectArg[]): (ctx: Context) => {include: Array<ProjectionAlias | string>} {
+function include (...args: SelectArg[]): (ctx: Context)
+=> {include: Array<ProjectionAlias | string>} {
   return function _include (ctx?: Context): {include: Array<ProjectionAlias | string>} {
     const includedAtts: Array<ProjectionAlias | string> = [];
     for (const arg of args) {
@@ -76,7 +78,8 @@ function exclude (...args: StringArg[]): (ctx?: Context) => {exclude: string[]} 
 type Exclude = (ctx?: Context) => {exclude: string[]};
 type Include = (ctx?: Context) => {include: Array<ProjectionAlias | string>};
 
-export function select2 (includeArg?: Include, excludeArg?: Exclude): (ctx?: Context) => SelectAttributes {
+export function select2 (includeArg?: Include, excludeArg?: Exclude):
+(ctx?: Context) => SelectAttributes {
   if (includeArg == null && excludeArg == null) {
     throw new Error('No arguments passed to the select function.');
   }
@@ -168,14 +171,15 @@ export function as (col: AsArg, alias: string): (ctx?: Context) => ProjectionAli
   };
 }
 
-type FromArg<T extends Model> = ((ctx?: Context) => T) | T;
+type FromArg<M extends Model> = ((ctx?: Context) => ModelStatic<M>) | ModelStatic<M>;
 
-export function from<T extends Model> (arg: FromArg<T>): (ctx?: Context) => T {
-  return function _from (ctx?: Context): T {
-    if (!isConstructor(arg) && typeof arg === 'function') {
-      return arg(ctx);
+export function from<M extends Model> (arg: FromArg<M>): (ctx?: Context)
+=> {_from: ModelStatic<M>} {
+  return function _from (ctx?: Context): {_from: ModelStatic<M>} {
+    if (isCallable(arg) && arg instanceof Function && typeof arg === 'function') {
+      return {_from: arg(ctx)};
     } else {
-      return arg as T;
+      return {_from: arg as ModelStatic<M>};
     }
   };
 }
@@ -191,11 +195,13 @@ export type AllOptions<M extends Model> = FindOptions<Attributes<M>> | CountOpti
 export function option<M extends Model> (
   key: keyof FindOptions<Attributes<M>>,
   // val: OptionValue,
-): (arg: OptionArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
+): (arg: OptionArg)
+  => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
   return function (
     arg: OptionArg,
   ): (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
-    return function _option (ctx?: Context): Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
+    return function _option (ctx?: Context):
+    Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
       if (typeof arg === 'function') {
         return {[key]: arg(ctx)};
       } else {
@@ -208,11 +214,13 @@ export function option<M extends Model> (
 export function countOption<M extends Model> (
   key: keyof CountOptions<Attributes<M>>,
   // val: OptionValue,
-): (arg: OptionArg) => (ctx?: Context) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
+): (arg: OptionArg) => (ctx?: Context)
+  => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
   return function (
     arg: OptionArg,
   ): (ctx?: Context) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
-    return function _option (ctx?: Context): Pick<CountOptions<CountOptions<M>>, keyof CountOptions<Attributes<M>>> {
+    return function _option (ctx?: Context):
+    Pick<CountOptions<CountOptions<M>>, keyof CountOptions<Attributes<M>>> {
       if (typeof arg === 'function') {
         return {[key]: arg(ctx)};
       } else {
@@ -222,7 +230,8 @@ export function countOption<M extends Model> (
   };
 }
 
-export const raw: <M extends Model>(arg: BooleanArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'raw'> =
+export const raw: <M extends Model>(arg: BooleanArg)
+=> (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'raw'> =
   option('raw');
 
 export const benchmark: <M extends Model>(
@@ -233,7 +242,8 @@ export const skipLocked: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'skipLocked'> = option('skipLocked');
 
-export const nest: <M extends Model>(arg: BooleanArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'nest'> =
+export const nest: <M extends Model>(arg: BooleanArg)
+=> (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'nest'> =
   option('nest');
 
 export const distinctOpt: <M extends Model>(arg: BooleanArg) => (ctx?: Context)
@@ -243,7 +253,8 @@ export const paranoid: <M extends Model>(
   arg: BooleanArg,
 ) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'paranoid'> = option('paranoid');
 
-export const lock: <M extends Model>(arg: LockArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'lock'> =
+export const lock: <M extends Model>(arg: LockArg)
+=> (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'lock'> =
   option('lock');
 
 export const logging: <M extends Model>(
@@ -252,7 +263,8 @@ export const logging: <M extends Model>(
 // export const rejectOnEmpty: <M extends Model>() => Pick<FindOptions<Attributes<M>>, 'rejectOnEmpty'> = option('rejectOnEmpty', true);
 // export const searchPath: <M extends Model>(path: string) => Pick<FindOptions<Attributes<M>>, 'searchPath'> = optionKey('searchPath');
 
-export const limit: <M extends Model>(arg: NumberArg) => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'limit'> =
+export const limit: <M extends Model>(arg: NumberArg)
+=> (ctx?: Context) => Pick<FindOptions<Attributes<M>>, 'limit'> =
   option('limit');
 
 export const offset: <M extends Model>(
@@ -262,9 +274,11 @@ export const offset: <M extends Model>(
 /** Query conditions
  * --------------------------------------------------**/
 
-export type WhereArg<M extends Model> = WhereAttributeHash<M> | ((ctx?: Context) => WhereAttributeHash<M>);
+export type WhereArg<M extends Model> =
+WhereAttributeHash<M> | ((ctx?: Context) => WhereAttributeHash<M>);
 
-export function where<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereOptions<Attributes<M>> {
+export function where<M extends Model> (...args: Array<WhereArg<M>>):
+(ctx?: Context) => WhereOptions<Attributes<M>> {
   return function _where (ctx?: Context) {
     const criteria = {};
     for (const cond of args) {
@@ -360,50 +374,60 @@ export function condition<M extends Model, AttrType = any> (
 
 export const isTrue: <M extends Model>(
   col: WhereCol<M>,
-) => <M extends Model>(ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col) => condition(Op.is, col, true);
+) => <M extends Model>(ctx?: Context)
+=> WhereAttributeHash<Attributes<M>> = (col) => condition(Op.is, col, true);
 
-export const isFalse: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+export const isFalse: <M extends Model>(col: WhereCol<M>)
+=> (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
   col,
 ) => condition(Op.is, col, false);
 
-export const isNull: <M extends Model>(col: WhereCol<M>) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
+export const isNull: <M extends Model>(col: WhereCol<M>)
+=> (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (
   col,
 ) => condition(Op.is, col, null);
 
 export const gt: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgGte<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.gt, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.gt, col, val);
 
 export const gte: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgGte<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.gte, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.gte, col, val);
 
 export const lt: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgGte<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.lt, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.lt, col, val);
 
 export const lte: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgGte<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.lte, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.lte, col, val);
 
 export const ne: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgEq<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.ne, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.ne, col, val);
 
 export const eq: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgEq<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.eq, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.eq, col, val);
 
 export const not: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArg<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.not, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.not, col, val);
 
 export const notTrue: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
@@ -418,12 +442,14 @@ export const notNull: <M extends Model, AttrType = any>(
 export const between: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgBetween<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.between, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.between, col, val);
 
 export const notBetween: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgBetween<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notBetween, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.notBetween, col, val);
 
 export const isIn: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
@@ -433,37 +459,44 @@ export const isIn: <M extends Model, AttrType = any>(
 export const notIn: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgIn<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notIn, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.notIn, col, val);
 
 export const like: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgLike<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.like, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.like, col, val);
 
 export const notLike: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgLike<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notLike, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.notLike, col, val);
 
 export const iLike: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgLike<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.iLike, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.iLike, col, val);
 
 export const notILike: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgLike<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notILike, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.notILike, col, val);
 
 export const startsWith: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStartsWith<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.startsWith, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.startsWith, col, val);
 
 export const endsWith: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStartsWith<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.endsWith, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.endsWith, col, val);
 
 export const substring: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
@@ -473,17 +506,20 @@ export const substring: <M extends Model, AttrType = any>(
 export const regexp: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgRegexp<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.regexp, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.regexp, col, val);
 
 export const notRegexp: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgRegexp<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.notRegexp, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.notRegexp, col, val);
 
 export const iRegexp: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgRegexp<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.iRegexp, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.iRegexp, col, val);
 
 export const notIRegexp: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
@@ -493,7 +529,8 @@ export const notIRegexp: <M extends Model, AttrType = any>(
 export const overlap: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgOverlap<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.overlap, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.overlap, col, val);
 
 export function contains<M extends Model, AttrType = any> (
   col: WhereCol<M>,
@@ -513,32 +550,38 @@ export function contains<M extends Model, AttrType = any> (
 export const contained: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgContained<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.contained, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.contained, col, val);
 
 export const adjacent: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStrictLeft<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.adjacent, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.adjacent, col, val);
 
 export const strictLeft: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStrictLeft<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.strictLeft, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.strictLeft, col, val);
 
 export const strictRight: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStrictLeft<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.strictRight, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.strictRight, col, val);
 
 export const noExtendRight: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStrictLeft<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.noExtendRight, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.noExtendRight, col, val);
 
 export const noExtendLeft: <M extends Model, AttrType = any>(
   col: WhereCol<M>,
   val: WhereValArgStrictLeft<AttrType>,
-) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> = (col, val) => condition(Op.noExtendLeft, col, val);
+) => (ctx?: Context) => WhereAttributeHash<Attributes<M>> =
+(col, val) => condition(Op.noExtendLeft, col, val);
 
 export function and<M extends Model> (
   ...args: Array<WhereArg<M>>
@@ -665,19 +708,16 @@ export function on<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Contex
   };
 }
 
-export type ModelArg<T> = T | ((ctx?: Context) => T);
+export type ModelArg<M extends Model> = ModelStatic<M> | ((ctx?: Context) => ModelStatic<M>);
 export type ModelReturn = Pick<IncludeOptions, 'model' | keyof JoinOptions>;
 export type ModelJoin = (ctx?: Context) => ModelReturn;
-export type Constructor<T> = new () => T;
 
-export function model<T extends Model> (arg: ModelArg<T>): (ctx?: Context) => ModelReturn {
+export function model<M extends Model> (arg: ModelArg<M>): (ctx?: Context) => ModelReturn {
   return function _model (ctx?: Context): ModelReturn {
-    if (!isConstructor(arg) && typeof arg === 'function') {
-      return {model: arg(ctx) as unknown as Constructor<T>};
-      // console.log('_model2',  {model: arg as unknown as ModelType});
+    if (isCallable(arg) && typeof arg === 'function' && arg instanceof Function) {
+      return {model: arg(ctx)};
     } else {
-      // console.log('_model3');
-      return {model: arg as unknown as Constructor<T>};
+      return {model: arg as ModelStatic<M>};
     }
   };
 }
@@ -687,45 +727,29 @@ export interface JoinReturn {_join: IncludeOptions[]}
 export type Join = (ctx?: Context) => JoinReturn;
 
 export function join<M extends Model> (...args: Array<JoinArg<M>>): (ctx?: Context) => JoinReturn {
-  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  const populateOptions = populateQueryOptions<M, IncludeOptions>(args);
   return function _join (ctx?: Context): JoinReturn {
-    const options = populateOptions(ctx) as IncludeOptions;
-    // console.log('_join', options);
+    const options = populateOptions(ctx);
     return {_join: [options]};
   };
 }
 
 export const rightJoin: <M extends Model>(...args: Array<JoinArg<M>>)
-=> (ctx?: Context) => JoinReturn = (...args) => join(joinOption('right')(true), ...args);
+=> (ctx?: Context) => JoinReturn = (...args) =>
+  join(joinOption('right')(true), joinOption('required')(false), ...args);
 
 export const innerJoin: <M extends Model>(...args: Array<JoinArg<M>>)
 => (ctx?: Context) => JoinReturn = (...args) => join(joinOption('required')(true), ...args);
 
 export type Where<M extends Model> = (ctx?: Context) => WhereOptions<Attributes<M>>;
 
-// export type IncludeArg = Join;
-
-// export function incldue (...args: IncludeArg[]): (ctx?: Context) => IncludeReturn {
-//   return function _incldue (ctx?: Context): IncludeReturn {
-//     const relations: IncludeOptions[] = [];
-//     for (const arg of args) {
-//       if (typeof arg === 'function') {
-//         const value = arg(ctx);
-//         if (value !== undefined) {
-//           relations.push(value);
-//         }
-//       }
-//     }
-//     return {include: relations};
-//   };
-// }
-
 // TODO: through for joins
 
 /** Group by queries
  * --------------------------------------------------**/
 
-export function having<M extends Model> (...args: Array<WhereArg<M>>): (ctx?: Context) => WhereOptions<Attributes<M>> {
+export function having<M extends Model> (...args: Array<WhereArg<M>>):
+(ctx?: Context) => WhereOptions<Attributes<M>> {
   return function _having (ctx?: Context) {
     const criteria = {};
     for (const cond of args) {
@@ -762,7 +786,7 @@ export function groupBy (...args: GroupByArg[]): (ctx?: Context) => GroupByRetur
  * --------------------------------------------------**/
 
 export type Select = (ctx?: Context) => SelectAttributes;
-export type From<T extends Model> = (ctx?: Context) => T;
+export type From<M extends Model> = (ctx?: Context) => {_from: ModelStatic<M>};
 export type Option<M extends Model> = (
   ctx?: Context,
 ) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>>;
@@ -783,13 +807,11 @@ export type FindAllArgReturn<M extends Model> = ReturnType<FindAllArg<M>>;
 export function findAll<M extends Model> (
   ...args: Array<FindAllArg<M>>
 ): (ctx?: Context) => Promise<Either<Error, M[]>> {
-  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
-  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  const populateOptions = populateQueryOptions<M, FindOptions<Attributes<M>> & {_from: M}>(args);
   return async function _findAllInner (ctx?: Context): Promise<Either<Error, M[]>> {
     try {
-      const model = getModel(ctx);
       const options = populateOptions(ctx);
-      console.log({options: JSON.stringify(options, null, 2)});
+      const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
       return right(await model.findAll<M>(options));
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -804,12 +826,12 @@ export function findAll<M extends Model> (
 export function findAndCountAll<M extends Model> (
   ...args: Array<FindAllArg<M>>
 ): (ctx?: Context) => Promise<Either<Error, {rows: M[], count: number}>> {
-  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
-  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
-  return async function _findAndCountAllInner (ctx?: Context): Promise<Either<Error, {rows: M[], count: number}>> {
+  const populateOptions = populateQueryOptions<M, FindOptions<Attributes<M>> & {_from: M}>(args);
+  return async function _findAndCountAllInner (ctx?: Context):
+  Promise<Either<Error, {rows: M[], count: number}>> {
     try {
-      const model = getModel(ctx);
       const options = populateOptions(ctx);
+      const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
       return right(await model.findAndCountAll<M>(options));
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -824,12 +846,11 @@ export function findAndCountAll<M extends Model> (
 export function findOne<M extends Model> (
   ...args: Array<FindAllArg<M>>
 ): (ctx?: Context) => Promise<Either<Error, M>> {
-  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
-  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  const populateOptions = populateQueryOptions<M, FindOptions<Attributes<M>> & {_from: M}>(args);
   return async function _findOneInner (ctx?: Context): Promise<Either<Error, M>> {
     try {
-      const model = getModel(ctx);
       const options = populateOptions(ctx);
+      const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
       const result = await model.findOne<M>(options);
       if (result != null) {
         return right(result);
@@ -847,15 +868,16 @@ export function findOne<M extends Model> (
 }
 
 export function aggregate<T, M extends Model> (functionName: string):
-(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>) => (ctx?: Context) => Promise<Either<Error, T>> {
-  return function _aggregate (attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>): (ctx?: Context)
-  => Promise<Either<Error, T>> {
-    const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
-    const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+(attribute: keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
+=> (ctx?: Context) => Promise<Either<Error, T>> {
+  return function _aggregate (attribute: keyof Attributes<M>,
+    ...args: Array<FindAllArg<M>>): (ctx?: Context)
+    => Promise<Either<Error, T>> {
+    const populateOptions = populateQueryOptions<M, FindOptions<Attributes<M>> & {_from: M}>(args);
     return async function _aggregateInner (ctx?: Context): Promise<Either<Error, T>> {
       try {
-        const model: ModelStatic<M> = getModel(ctx);
-        const options: FindOptions<Attributes<M>> = populateOptions(ctx);
+        const options = populateOptions(ctx);
+        const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
         return right(await model.aggregate<T, M>(attribute, functionName, options));
       } catch (e: unknown) {
         if (e instanceof Error) {
@@ -889,12 +911,11 @@ export type CountRowsArg<M extends Model> = Select
 export function countRows<M extends Model> (
   ...args: Array<CountRowsArg<M>>
 ): (ctx?: Context) => Promise<Either<Error, number>> {
-  const getModel = getValueFromArgs<ModelStatic<M>, M>('_from', args);
-  const populateOptions = populateQueryOptions<Attributes<M>, M>(args);
+  const populateOptions = populateQueryOptions<M, FindOptions<Attributes<M>> & {_from: M}>(args);
   return async function _countInner (ctx?: Context): Promise<Either<Error, number>> {
     try {
-      const model = getModel(ctx);
       const options = populateOptions(ctx);
+      const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
       return right(await model.count<M>(options));
     } catch (e: unknown) {
       if (e instanceof Error) {
