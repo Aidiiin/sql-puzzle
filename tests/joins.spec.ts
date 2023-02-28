@@ -564,6 +564,72 @@ describe('testing joins', () => {
     }
   });
 
+  test('should return users with posts with their path of images', async () => {
+    const res = await findAll<User>(
+      from(User), nest(true),
+      innerJoin(
+        model(Post),
+        joinAlias('posts'),
+        innerJoin(
+          model(Image),
+          joinAlias('images'),
+          select('path'),
+        ),
+      ),
+      asc('id'),
+      // logging(true),
+    )(ctx);
+    expect(res._tag).toEqual('Right');
+    if (res._tag === 'Right') {
+      expect(res.right.map((user) => {
+        return user.get({plain: true});
+      })).toEqual([
+        {
+          email: 'janedoe@',
+          flag: true,
+          id: 1,
+          name: 'janedoe',
+          posts: [
+            {
+              content: 'post 1 content',
+              id: 1,
+              images: [
+                {
+                  path: 'image 3 path',
+                },
+              ],
+              title: 'post 1',
+              userId: 1,
+            },
+          ],
+        },
+        {
+          email: 'janedoe2@',
+          flag: false,
+          id: 2,
+          name: 'janedoe2',
+          posts: [
+            {
+              content: 'post 3 content',
+              id: 3,
+              images: [
+                {
+                  path: 'image 1 pah',
+                },
+                {
+                  path: 'image 2 path',
+                },
+              ],
+              title: 'post 3',
+              userId: 2,
+            },
+          ],
+        },
+      ],
+      );
+    }
+  });
+
   // test('should return the user right joined with posts', async () => {
   //   const res = await findAll<User>(
   //     from(User),
