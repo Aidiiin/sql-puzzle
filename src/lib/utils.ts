@@ -1,6 +1,6 @@
 /* eslint-disable */
 import {FindOptions, Transactionable, Attributes, Model, LOCK, IncludeOptions, ModelStatic} from 'sequelize';
-import {type Context, type FindAllArg, type FindAllArgReturn} from './functions';
+import {type Context, type FindAllArg, type FindAllArgReturn} from './functions.js';
 /* eslint-enable */
 
 /**

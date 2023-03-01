@@ -24,9 +24,9 @@ import {
   GroupOption,
   CountOptions,
 } from 'sequelize';
-import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
-import {isCallable, populateQueryOptions} from './utils';
-import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
+import {Either, right, left, tryCatch} from 'fp-ts/lib/Either.js';
+import {isCallable, populateQueryOptions} from './utils.js';
+import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils.js';
 /* eslint-enable */
 
 export type Context = object & Transactionable;
