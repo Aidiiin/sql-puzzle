@@ -6,7 +6,7 @@ sql-puzzle is a higly composable and functional query builder. It is a lightweig
 
 ```bash
 npm install sequelize --save
-npm install sql-puizzle --save
+npm install sql-puzzle --save
 ```
 
 ## Examples
