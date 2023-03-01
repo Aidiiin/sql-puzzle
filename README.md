@@ -2,6 +2,13 @@
 
 sql-puzzle is a higly composable and functional query builder. It is a lightweight wrapper for Sequelize and is written in TypeScript.
 
+## Install
+
+```bash
+npm install sequelize --save
+npm install sql-puizzle --save
+```
+
 ## Examples
 
 ```typescript
