@@ -4,6 +4,7 @@ sql-puzzle is a highly composable and functional query builder. It is a lightwei
 
 ## Install
 
+Works with node v12, v14, v16, v18, and Sequelize v6.
 ```bash
 npm install sequelize --save
 npm install sql-puzzle --save
