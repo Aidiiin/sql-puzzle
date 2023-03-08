@@ -18,7 +18,8 @@ import {
   where,
   and, 
   not, 
-  or, 
+  or,
+  as,
   eq, 
   from, 
   select,
@@ -136,6 +137,14 @@ const res = await findAll(
 )(ctx);
 
 const res = await findAll(
+  from(Post), 
+  nest(true),
+  ...joinImages,
+  asc('id'),
+)(ctx);
+
+const res = await findAll(
+  select('id', as('name', 'new_name')),
   from(Post), 
   nest(true),
   ...joinImages,
