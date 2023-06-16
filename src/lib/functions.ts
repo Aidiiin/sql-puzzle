@@ -6,7 +6,7 @@ import {
   type ModelStatic,
   Transaction,
   type LOCK,
-  type ProjectionAlias,
+  // type ProjectionAlias,
   type Transactionable,
   Sequelize,
   WhereOptions,
@@ -24,32 +24,38 @@ import {
   GroupOption,
   CountOptions,
 } from 'sequelize';
-import {Either, right, left, tryCatch} from 'fp-ts/lib/Either.js';
-import {isCallable, populateQueryOptions} from './utils.js';
-import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils.js';
+import {Either, right, left, tryCatch} from 'fp-ts/lib/Either';
+import {isCallable, populateQueryOptions} from './utils';
+import {Col, Fn, Json, Literal, Primitive, Where as WhereSq} from 'sequelize/types/utils';
 /* eslint-enable */
 
 export type Context = object & Transactionable;
 type StringArg = string | ((ctx?: Context) => string);
+type ColArg<M extends Model> = keyof M | ((ctx?: Context) => keyof M);
 type BooleanArg = boolean | ((ctx?: Context) => boolean);
 type NumberArg = number | ((ctx?: Context) => number);
 
-type SelectArg = string | ProjectionAlias | ((ctx?: Context)
-=> ProjectionAlias) | ((ctx?: Context) => string);
+type SelectArg<M extends Model> = keyof M
+| TypeSafeProjectionAlias<M>
+| ((ctx?: Context) => TypeSafeProjectionAlias<M>)
+| ((ctx?: Context) => keyof M);
 
-interface SelectAttributes {
+export type TypeSafeProjectionAlias<M extends Model> =
+  readonly [keyof M | Literal | TypeSafeFnReturn<M> | Col, string];
+
+interface SelectAttributes<M extends Model> {
   attributes:
   | {
-    include?: Array<ProjectionAlias | string>
-    exclude?: string[]
+    include?: Array<TypeSafeProjectionAlias<M> | keyof M>
+    exclude?: Array<keyof M>
   }
-  | Array<string | ProjectionAlias>
+  | Array<keyof M | TypeSafeProjectionAlias<M>>
 }
 
-function include (...args: SelectArg[]): (ctx: Context)
-=> {include: Array<ProjectionAlias | string>} {
-  return function _include (ctx?: Context): {include: Array<ProjectionAlias | string>} {
-    const includedAtts: Array<ProjectionAlias | string> = [];
+function include<M extends Model> (...args: Array<SelectArg<M>>): (ctx: Context)
+=> {include: Array<TypeSafeProjectionAlias<M> | keyof M>} {
+  return function _include (ctx?: Context): {include: Array<TypeSafeProjectionAlias<M> | keyof M>} {
+    const includedAtts: Array<TypeSafeProjectionAlias<M> | keyof M> = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
         includedAtts.push(arg(ctx));
@@ -61,9 +67,10 @@ function include (...args: SelectArg[]): (ctx: Context)
   };
 }
 
-function exclude (...args: StringArg[]): (ctx?: Context) => {exclude: string[]} {
-  return function _exclude (ctx?: Context): {exclude: string[]} {
-    const excludedAtts: string[] = [];
+function exclude<M extends Model> (...args: Array<ColArg<M>>):
+(ctx?: Context) => {exclude: Array<keyof M>} {
+  return function _exclude (ctx?: Context): {exclude: Array<keyof M>} {
+    const excludedAtts: Array<keyof M> = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
         excludedAtts.push(arg(ctx));
@@ -75,16 +82,17 @@ function exclude (...args: StringArg[]): (ctx?: Context) => {exclude: string[]} 
   };
 }
 
-type Exclude = (ctx?: Context) => {exclude: string[]};
-type Include = (ctx?: Context) => {include: Array<ProjectionAlias | string>};
+type Exclude<M extends Model> = (ctx?: Context) => {exclude: Array<keyof M>};
+type Include<M extends Model> =
+(ctx?: Context) => {include: Array<TypeSafeProjectionAlias<M> | keyof M>};
 
-export function select2 (includeArg?: Include, excludeArg?: Exclude):
-(ctx?: Context) => SelectAttributes {
+export function select2<M extends Model> (includeArg?: Include<M>, excludeArg?: Exclude<M>):
+(ctx?: Context) => SelectAttributes<M> {
   if (includeArg == null && excludeArg == null) {
     throw new Error('No arguments passed to the select function.');
   }
-  return function _select (ctx?: Context): SelectAttributes {
-    const result: SelectAttributes = {attributes: {}};
+  return function _select (ctx?: Context): SelectAttributes<M> {
+    const result: SelectAttributes<M> = {attributes: {}};
     if (includeArg != null && !(result.attributes instanceof Array)) {
       result.attributes.include = includeArg(ctx).include;
     }
@@ -96,12 +104,13 @@ export function select2 (includeArg?: Include, excludeArg?: Exclude):
   };
 }
 
-export function select (...args: SelectArg[]): (ctx?: Context) => SelectAttributes {
+export function select<M extends Model> (...args: Array<SelectArg<M>>):
+(ctx?: Context) => SelectAttributes<M> {
   if (include == null && exclude == null) {
     throw new Error('No arguments passed to the select function.');
   }
-  return function _select (ctx?: Context): SelectAttributes {
-    const attributes: Array<string | ProjectionAlias> = [];
+  return function _select (ctx?: Context): SelectAttributes<M> {
+    const attributes: Array<keyof M | TypeSafeProjectionAlias<M>> = [];
     for (const arg of args) {
       if (typeof arg === 'function') {
         attributes.push(arg(ctx));
@@ -117,7 +126,8 @@ export function literal (raw: string): Literal {
   return Sequelize.literal(raw);
 }
 
-export function fn (functionName: string, col: string, ...args: unknown[]): (ctx?: Context) => Fn {
+export function fn<M extends Model> (functionName: string, col: keyof M, ...args: unknown[]):
+(ctx?: Context) => Fn {
   return function _fn (ctx?: Context): Fn {
     const functionArgs = [];
     for (const arg of args) {
@@ -127,41 +137,44 @@ export function fn (functionName: string, col: string, ...args: unknown[]): (ctx
         functionArgs.push(arg);
       }
     }
-    return Sequelize.fn(functionName, Sequelize.col(col), ...functionArgs);
+    return Sequelize.fn(functionName, Sequelize.col(col.toString()), ...functionArgs);
   };
 }
 
-export function max (col: string): (ctx?: Context) => Fn {
+export type TypeSafeFn<M extends Model> = ReturnType<typeof fn<M>>;
+export type TypeSafeFnReturn<M extends Model> = ReturnType<ReturnType<typeof fn<M>>>;
+
+export function max<M extends Model> (col: keyof M): (ctx?: Context) => Fn {
   return fn('max', col);
 }
 
-export function min (col: string): (ctx?: Context) => Fn {
+export function min<M extends Model> (col: keyof M): (ctx?: Context) => Fn {
   return fn('min', col);
 }
 
-export function sum (col: string): (ctx?: Context) => Fn {
+export function sum<M extends Model> (col: keyof M): (ctx?: Context) => Fn {
   return fn('sum', col);
 }
 
-export function count (col: string): (ctx?: Context) => Fn {
+export function count<M extends Model> (col: keyof M): (ctx?: Context) => Fn {
   return fn('count', col);
 }
 
-export function distinct (col: string): (ctx?: Context) => Fn {
+export function distinct<M extends Model> (col: keyof M): (ctx?: Context) => Fn {
   return fn('distinct', col);
 }
 
-export type AsArg =
-  | string
-  | ((ctx?: Context) => string)
-  | Fn
+export type AsArg<M extends Model> =
+  | keyof M
+  | TypeSafeFn<M>
   | Literal
   | Col
-  | ((ctx?: Context) => Fn)
+  | ((ctx?: Context) => keyof M)
   | ((ctx?: Context) => Literal)
   | ((ctx?: Context) => Col);
 
-export function as (col: AsArg, alias: string): (ctx?: Context) => ProjectionAlias {
+export function as<M extends Model> (col: AsArg<M>, alias: string):
+(ctx?: Context) => TypeSafeProjectionAlias<M> {
   return function _as (ctx?: Context) {
     if (typeof col === 'function') {
       return [col(ctx), alias];
@@ -187,7 +200,7 @@ export function from<M extends Model> (arg: FromArg<M>): (ctx?: Context)
 /** Query options
  * --------------------------------------------------**/
 type LockArg = LOCK | ((ctx?: Context) => LOCK);
-type OptionArg = BooleanArg | SelectArg | NumberArg | LockArg;
+type OptionArg<M extends Model> = BooleanArg | SelectArg<M> | NumberArg | LockArg | StringArg;
 
 // export type OptionKey<M extends Model> = keyof FindOptions<Attributes<M>> | keyof CountOptions<Attributes<M>>
 export type AllOptions<M extends Model> = FindOptions<Attributes<M>> | CountOptions<Attributes<M>>;
@@ -195,10 +208,10 @@ export type AllOptions<M extends Model> = FindOptions<Attributes<M>> | CountOpti
 export function option<M extends Model> (
   key: keyof FindOptions<Attributes<M>>,
   // val: OptionValue,
-): (arg: OptionArg)
+): (arg: OptionArg<M>)
   => (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
   return function (
-    arg: OptionArg,
+    arg: OptionArg<M>,
   ): (ctx?: Context) => Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
     return function _option (ctx?: Context):
     Pick<FindOptions<Attributes<M>>, keyof FindOptions<Attributes<M>>> {
@@ -214,10 +227,10 @@ export function option<M extends Model> (
 export function countOption<M extends Model> (
   key: keyof CountOptions<Attributes<M>>,
   // val: OptionValue,
-): (arg: OptionArg) => (ctx?: Context)
+): (arg: OptionArg<M>) => (ctx?: Context)
   => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
   return function (
-    arg: OptionArg,
+    arg: OptionArg<M>,
   ): (ctx?: Context) => Pick<CountOptions<Attributes<M>>, keyof CountOptions<Attributes<M>>> {
     return function _option (ctx?: Context):
     Pick<CountOptions<CountOptions<M>>, keyof CountOptions<Attributes<M>>> {
@@ -665,11 +678,11 @@ export const ascNullsLast: (...args: OrderArg[]) => (ctx?: Context) => OrderRetu
 export type JoinOptions = Pick<IncludeOptions, 'separate' | 'subQuery' | 'as' | 'right'
 | 'required' | 'limit'>;
 
-export function joinOption (
+export function joinOption<M extends Model> (
   key: keyof JoinOptions,
-): (arg: OptionArg) => (ctx?: Context) => Pick<JoinOptions, keyof JoinOptions> {
+): (arg: OptionArg<M>) => (ctx?: Context) => Pick<JoinOptions, keyof JoinOptions> {
   return function (
-    arg: OptionArg,
+    arg: OptionArg<M>,
   ): (ctx?: Context) => Pick<JoinOptions, keyof JoinOptions> {
     return function _option (ctx?: Context): Pick<JoinOptions, keyof JoinOptions> {
       if (typeof arg === 'function') {
@@ -722,7 +735,7 @@ export function model<M extends Model> (arg: ModelArg<M>): (ctx?: Context) => Mo
   };
 }
 
-export type JoinArg<M extends Model> = ModelJoin | Where<M> | Select | JoinOptionReturn | Join;
+export type JoinArg<M extends Model> = ModelJoin | Where<M> | Select<M> | JoinOptionReturn | Join;
 export interface JoinReturn {_join: IncludeOptions[]}
 export type Join = (ctx?: Context) => JoinReturn;
 
@@ -785,7 +798,7 @@ export function groupBy (...args: GroupByArg[]): (ctx?: Context) => GroupByRetur
 /** Query methods
  * --------------------------------------------------**/
 
-export type Select = (ctx?: Context) => SelectAttributes;
+export type Select<M extends Model> = (ctx?: Context) => SelectAttributes<M>;
 export type From<M extends Model> = (ctx?: Context) => {_from: ModelStatic<M>};
 export type Option<M extends Model> = (
   ctx?: Context,
@@ -796,7 +809,7 @@ export type CountOption<M extends Model> = (
 
 export type FindArgOrder = (ctx?: Context) => OrderReturn;
 
-export type FindAllArg<M extends Model> = Select
+export type FindAllArg<M extends Model> = Select<M>
 | From<M>
 | Option<M>
 | Where<M>
@@ -811,6 +824,7 @@ export function findAll<M extends Model> (
   return async function _findAllInner (ctx?: Context): Promise<Either<Error, M[]>> {
     try {
       const options = populateOptions(ctx);
+      console.log(JSON.stringify({options}));
       const model: ModelStatic<M> = options._from as unknown as ModelStatic<M>;
       return right(await model.findAll<M>(options));
     } catch (e: unknown) {
@@ -902,7 +916,7 @@ export const aggMin: <T, M extends Model>(attribute:
 keyof Attributes<M>, ...args: Array<FindAllArg<M>>)
 => (ctx?: Context) => Promise<Either<Error, T>> = aggregate('min');
 
-export type CountRowsArg<M extends Model> = Select
+export type CountRowsArg<M extends Model> = Select<M>
 | From<M>
 | CountOption<M>
 | Where<M>

@@ -573,7 +573,7 @@ describe('testing joins', () => {
         innerJoin(
           model(Image),
           joinAlias('images'),
-          select('path'),
+          select<Image>('path'),
         ),
       ),
       asc('id'),

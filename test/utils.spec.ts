@@ -2,7 +2,6 @@ import {
   type InferAttributes,
   type InferCreationAttributes,
   Model,
-  type ModelStatic,
   type FindOptions,
   type Attributes,
 } from 'sequelize';

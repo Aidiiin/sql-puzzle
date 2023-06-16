@@ -199,7 +199,7 @@ describe('testing findAll', () => {
     expect(
       await findAll<User>(
         ...args,
-        select('name', () => 'id', as('email', 'email2')),
+        select('name', () => 'id', 'email', as('email', 'email2')),
       )(ctx),
     ).toEqual(
       right(
@@ -207,6 +207,7 @@ describe('testing findAll', () => {
           return {
             name: a.name,
             id: a.id,
+            email: a.email,
             email2: a.email,
           };
         }),
@@ -218,7 +219,7 @@ describe('testing findAll', () => {
     expect(
       await findAll<User>(
         ...args,
-        select('name', () => 'id', as(max('id'), 'newid')),
+        select('name', () => 'id', as(max<User>('id'), 'newid')),
       )(ctx),
     ).toEqual(
       right([
@@ -235,7 +236,7 @@ describe('testing findAll', () => {
     expect(
       await findAll<User>(
         ...args,
-        select('name', () => 'id', as(min('id'), 'newid')),
+        select('name', () => 'id', as(min<User>('id'), 'newid')),
       )(ctx),
     ).toEqual(
       right([
@@ -249,7 +250,7 @@ describe('testing findAll', () => {
   });
 
   test('should return sum of ids', async () => {
-    expect(await findAll<User>(...args, select('name', as(sum('id'), 'sumid')))(ctx)).toEqual(
+    expect(await findAll<User>(...args, select('name', as(sum<User>('id'), 'sumid')))(ctx)).toEqual(
       right([
         {
           sumid: 15,
@@ -260,7 +261,7 @@ describe('testing findAll', () => {
   });
 
   test('should return count of the rows ', async () => {
-    expect(await findAll<User>(...args, select(as(count('id'), 'total')))(ctx)).toEqual(
+    expect(await findAll<User>(...args, select(as(count<User>('id'), 'total')))(ctx)).toEqual(
       right([
         {
           total: 5,
@@ -270,8 +271,9 @@ describe('testing findAll', () => {
   });
 
   test('should return rows with altered names', async () => {
-    expect(await findAll<User>(...args, select(as(fn('replace', 'name', 'j', 'm'), 'new_name')))(ctx)).toEqual(
-      right([
+    expect(await findAll<User>(...args,
+      select(as(fn<User>('replace', 'name', 'j', 'm'), 'new_name')))(ctx))
+      .toEqual(right([
         {
           new_name: 'manedoe',
         },
@@ -287,12 +289,11 @@ describe('testing findAll', () => {
         {
           new_name: 'manedoe5',
         },
-      ]),
-    );
+      ]));
   });
 
   test('should return rows with distinct names', async () => {
-    expect(await findAll<User>(...args, select(as(distinct('name'), 'dname')))(ctx)).toEqual(
+    expect(await findAll<User>(...args, select(as(distinct<User>('name'), 'dname')))(ctx)).toEqual(
       right([
         {
           dname: 'janedoe',
@@ -334,7 +335,7 @@ describe('testing findAll', () => {
   });
 
   test('should return the row where flag is true', async () => {
-    expect(await findAll<User>(...args, select('id'), where(isTrue('flag')), limit(1))(ctx)).toEqual(
+    expect(await findAll<User>(...args, select('id'), where<User>(isTrue('flag')), limit(1))(ctx)).toEqual(
       right([
         {
           id: 1,
