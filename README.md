@@ -1,6 +1,6 @@
 # sql-puzzle (WIP)
 
-sql-puzzle is a type-safe, highly composable, and functional query builder. It is a lightweight wrapper for Sequelize and is written in TypeScript. sql-puzzle is built around the idea of composing functionalities and code reuse. This is achieved by defining SQL constructs at the lowest possible level and building upon those.
+sql-puzzle is a type-safe, highly composable, and functional query builder. It is a lightweight wrapper for Sequelize and written in TypeScript. The key idea behind sql-puzzle is to enable composable logic and reusable code. This is accomplished by defining SQL constructs at the most granular level and building upon them.
 
 ![sql-puzzle](https://github.com/Aidiiin/sql-puzzle/assets/3137261/daf35c34-259d-4e94-9f68-3c14961bdffb)
 
